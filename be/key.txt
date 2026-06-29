@@ -1,8 +1,0 @@
-key payos:
-Client ID: 369acc35-2b91-4191-af17-297d73c71e05
-API Key: 59c5dd09-a310-4153-9548-52a5e8377ce6
-Checksum Key: ead53ba642f1e356587473631423450aa012b4e7150e22fdece655022975ab14
---------------------------------------------------------
-email:
-tk: vupl8369@gmail.com
-mk: sdzp mvgm gqyc mpqg
