@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../services/token_storage.dart';
 import '../utils/api_constants.dart';
 import 'login_screen.dart';
+import 'notifications_screen.dart';
+import 'account_screen.dart';
 import '../main.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -18,6 +21,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   String _email = '';
   List<dynamic> _products = [];
   bool _loadingProducts = true;
+  int _unreadCount = 0;
+  int _bottomNavIndex = 0;
 
   final List<Map<String, dynamic>> _categories = [
     {'icon': Icons.watch_outlined,              'label': 'Đồng hồ',    'color': Color(0xFFE91E8C)},
@@ -33,6 +38,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     super.initState();
     _loadUserInfo();
     _loadProducts();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final notifications = await NotificationService.getNotifications(unreadOnly: true);
+    if (mounted) setState(() => _unreadCount = notifications.length);
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+    _loadUnreadCount();
   }
 
   Future<void> _loadUserInfo() async {
@@ -115,7 +132,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             ]),
                             // Action icons
                             Row(children: [
-                              IconButton(icon: const Icon(Icons.notifications_outlined, color: Colors.white), onPressed: () {}),
+                              IconButton(
+                                icon: Badge(
+                                  label: Text('$_unreadCount'),
+                                  isLabelVisible: _unreadCount > 0,
+                                  backgroundColor: const Color(0xFFFFD700),
+                                  textColor: Colors.black,
+                                  child: const Icon(Icons.notifications_outlined, color: Colors.white),
+                                ),
+                                onPressed: _openNotifications,
+                              ),
                               IconButton(icon: const Icon(Icons.shopping_cart_outlined,  color: Colors.white), onPressed: () {}),
                               IconButton(
                                 icon: const Icon(Icons.logout, color: Colors.white),
@@ -428,7 +454,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
-        currentIndex: 0,
+        currentIndex: _bottomNavIndex,
+        onTap: (index) {
+          if (index == 4) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
+            return;
+          }
+          setState(() => _bottomNavIndex = index);
+        },
         items: const [
           BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
