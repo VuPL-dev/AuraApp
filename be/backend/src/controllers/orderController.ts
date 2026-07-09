@@ -94,3 +94,60 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// Customer xác nhận đã nhận hàng (quét mã QR)
+export const confirmDelivery = async (req: Request, res: Response) => {
+  try {
+    const orderId = Number(req.params.id);
+    const userId = (req as any).user.id;
+
+    if (isNaN(orderId)) {
+      res.status(400).json({ error: 'ID đơn hàng không hợp lệ' });
+      return;
+    }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!existingOrder) {
+      res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+      return;
+    }
+
+    if (existingOrder.user_id !== userId) {
+      res.status(403).json({ error: 'Bạn không có quyền xác nhận đơn hàng này' });
+      return;
+    }
+
+    if (existingOrder.status === 'DELIVERED') {
+      res.status(400).json({ error: 'Đơn hàng này đã được xác nhận giao hàng trước đó' });
+      return;
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'DELIVERED' },
+    });
+
+    // Gửi thông báo nhắc đánh giá sản phẩm
+    const productNames = existingOrder.items
+      .map((item) => item.product?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    await prisma.notification.create({
+      data: {
+        user_id: userId,
+        title: 'Giao hàng thành công',
+        message: `Bạn đã xác nhận nhận hàng thành công. Vui lòng đánh giá sản phẩm ${productNames || `trong đơn hàng #${orderId}`} nhé.`,
+      },
+    });
+
+    res.status(200).json({ message: 'Xác nhận nhận hàng thành công', order: updatedOrder });
+  } catch (error: any) {
+    console.error('[Orders] Error confirming delivery:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};

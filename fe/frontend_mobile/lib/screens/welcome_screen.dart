@@ -8,6 +8,7 @@ import '../utils/api_constants.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 import 'account_screen.dart';
+import 'qr_scanner_screen.dart';
 import '../main.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -447,6 +448,33 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         ],
       ),
 
+      // ── Floating Action Button (QR Scanner) ───────────────────────────
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: Container(
+        height: 64,
+        width: 64,
+        margin: const EdgeInsets.only(top: 24),
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+            );
+          },
+          backgroundColor: const Color(0xFFC8102E),
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.qr_code_scanner, color: Colors.white, size: 28),
+              SizedBox(height: 2),
+              Text('Quét QR', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+
       // ── Bottom Nav ────────────────────────────────────────────────────
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -454,8 +482,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
-        currentIndex: _bottomNavIndex,
+        currentIndex: _bottomNavIndex > 2 ? _bottomNavIndex : _bottomNavIndex, // handle logic if needed
         onTap: (index) {
+          if (index == 2) return; // Middle button is FAB
           if (index == 4) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
             return;
@@ -472,9 +501,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               activeIcon: Icon(Icons.category),
               label: 'Danh mục'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_outline),
-              activeIcon: Icon(Icons.favorite),
-              label: 'Yêu thích'),
+              icon: Icon(Icons.qr_code_scanner, color: Colors.transparent),
+              label: ''), // Placeholder for FAB
           BottomNavigationBarItem(
               icon: Icon(Icons.shopping_cart_outlined),
               activeIcon: Icon(Icons.shopping_cart),
