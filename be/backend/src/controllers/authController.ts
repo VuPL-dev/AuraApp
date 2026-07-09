@@ -129,6 +129,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (!user.is_active) {
+      res.status(403).json({ error: 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Admin.' });
+      return;
+    }
+
     if (!user.is_email_verified) {
       res.status(403).json({ error: 'Tài khoản chưa xác thực email. Vui lòng kiểm tra hộp thư.' });
       return;
