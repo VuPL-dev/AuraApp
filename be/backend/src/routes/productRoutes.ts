@@ -4,12 +4,30 @@ import { authenticateToken, authorizeRole } from '../middlewares/authMiddleware'
 
 const router = Router();
 
-// GET /api/products - Tất cả sản phẩm
+// GET /api/products - Tất cả sản phẩm, hỗ trợ lọc (category_id, brand, min_price, max_price, search) và sắp xếp (sort)
 router.get('/', async (req, res) => {
   try {
+    const { category_id, brand, min_price, max_price, search, sort } = req.query;
+
+    const where: any = {};
+    if (category_id) where.category_id = Number(category_id);
+    if (brand) where.brand = { equals: String(brand) };
+    if (search) where.name = { contains: String(search) };
+    if (min_price || max_price) {
+      where.price = {};
+      if (min_price) where.price.gte = Number(min_price);
+      if (max_price) where.price.lte = Number(max_price);
+    }
+
+    let orderBy: any = { created_at: 'desc' };
+    if (sort === 'price_asc') orderBy = { price: 'asc' };
+    else if (sort === 'price_desc') orderBy = { price: 'desc' };
+    else if (sort === 'name_asc') orderBy = { name: 'asc' };
+
     const products = await prisma.product.findMany({
+      where,
       include: { images: true, category: true },
-      orderBy: { created_at: 'desc' },
+      orderBy,
     });
     res.json(products);
   } catch (error) {

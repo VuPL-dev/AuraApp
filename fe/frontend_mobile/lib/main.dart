@@ -40,26 +40,121 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _loading = true;
   final List<dynamic> _cart = [];
 
+  final TextEditingController _searchController = TextEditingController();
+  String? _selectedCategoryId;
+  String _sort = 'newest';
+  List<Map<String, dynamic>> _categoryOptions = [];
+
   @override
   void initState() {
     super.initState();
     _loadProducts();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadProducts() async {
+    setState(() => _loading = true);
     try {
-      final response = await http
-          .get(Uri.parse('${ApiConstants.baseUrl}/products'))
-          .timeout(const Duration(seconds: 10));
+      final params = <String, String>{};
+      if (_searchController.text.trim().isNotEmpty) {
+        params['search'] = _searchController.text.trim();
+      }
+      if (_selectedCategoryId != null) params['category_id'] = _selectedCategoryId!;
+      if (_sort == 'price_asc') params['sort'] = 'price_asc';
+      if (_sort == 'price_desc') params['sort'] = 'price_desc';
+
+      final uri = Uri.parse('${ApiConstants.baseUrl}/products')
+          .replace(queryParameters: params.isEmpty ? null : params);
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
-        if (mounted) setState(() { _products = data; _loading = false; });
+        if (mounted) {
+          setState(() {
+            _products = data;
+            _loading = false;
+            if (_categoryOptions.isEmpty) {
+              final seen = <String>{};
+              _categoryOptions = data
+                  .map((p) => p['category'])
+                  .where((c) => c != null && seen.add(c['id'].toString()))
+                  .map<Map<String, dynamic>>(
+                      (c) => {'id': c['id'].toString(), 'name': c['name']})
+                  .toList();
+            }
+          });
+        }
       } else {
         if (mounted) setState(() => _loading = false);
       }
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Widget _buildFilterBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Tìm kiếm sản phẩm...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onSubmitted: (_) => _loadProducts(),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _filterChip('Tất cả', _selectedCategoryId == null,
+                    () => setState(() { _selectedCategoryId = null; _loadProducts(); })),
+                ..._categoryOptions.map((c) => _filterChip(
+                    c['name'] as String,
+                    _selectedCategoryId == c['id'],
+                    () => setState(() { _selectedCategoryId = c['id'] as String; _loadProducts(); }))),
+                const SizedBox(width: 4),
+                _sortChip('Mới nhất', 'newest'),
+                _sortChip('Giá tăng', 'price_asc'),
+                _sortChip('Giá giảm', 'price_desc'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, bool selected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 11)),
+        selected: selected,
+        selectedColor: const Color(0xFFC8102E),
+        labelStyle: TextStyle(color: selected ? Colors.white : Colors.black87),
+        onSelected: (_) => onTap(),
+      ),
+    );
+  }
+
+  Widget _sortChip(String label, String value) {
+    return _filterChip(label, _sort == value,
+        () => setState(() { _sort = value; _loadProducts(); }));
   }
 
   String _formatPrice(dynamic price) {
@@ -110,11 +205,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
           )
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFC8102E)))
-          : _products.isEmpty
-              ? const Center(child: Text('Chưa có sản phẩm nào.'))
-              : GridView.builder(
+      body: Column(
+        children: [
+          _buildFilterBar(),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFC8102E)))
+                : _products.isEmpty
+                    ? const Center(child: Text('Chưa có sản phẩm nào.'))
+                    : GridView.builder(
                   padding: const EdgeInsets.all(12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -199,6 +298,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     );
                   },
                 ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -335,10 +437,12 @@ class _CartScreenState extends State<CartScreen> {
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         final checkoutUrl = data['checkoutUrl'];
+        final orderId = data['order_id'];
         if (checkoutUrl != null) {
           final uri = Uri.parse(checkoutUrl);
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
+            if (orderId != null) _waitForPaymentSuccess(orderId as int, token);
           } else {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -359,6 +463,45 @@ class _CartScreenState extends State<CartScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Bắt sự kiện thanh toán thành công (theo dõi trạng thái đơn hàng sau khi
+  // người dùng thanh toán qua trình duyệt PayOS) và tự động chuyển về Trang chủ.
+  Future<void> _waitForPaymentSuccess(int orderId, String token) async {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đang chờ xác nhận thanh toán...'),
+        duration: Duration(seconds: 3),
+      ));
+    }
+
+    for (int attempt = 0; attempt < 20; attempt++) {
+      await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
+
+      try {
+        final response = await http.get(
+          Uri.parse('${ApiConstants.baseUrl}/orders/$orderId'),
+          headers: {'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200) {
+          final order = jsonDecode(response.body);
+          if (order['status'] == 'SUCCESS') {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Thanh toán thành công!'),
+                backgroundColor: Color(0xFF4CAF50),
+              ));
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            }
+            return;
+          }
+        }
+      } catch (_) {
+        // Bỏ qua lỗi tạm thời, tiếp tục thử lại
+      }
     }
   }
 
