@@ -123,11 +123,11 @@ export const handlePayosWebhook = async (req: Request, res: Response): Promise<v
       await prisma.$transaction([
         prisma.payment.update({
           where: { id: payment.id },
-          data: { status: "SUCCESS" },
+          data: { status: "PAID" },
         }),
         prisma.order.update({
           where: { id: orderId },
-          data: { status: "SUCCESS" },
+          data: { status: "PAID" },
         }),
         prisma.notification.create({
           data: {

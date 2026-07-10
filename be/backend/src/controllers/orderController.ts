@@ -1,14 +1,22 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
+import jwt from 'jsonwebtoken';
 
-const ORDER_STATUSES = ['PENDING', 'SUCCESS', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
+const ORDER_STATUSES = ['PENDING', 'PAID', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
 
 export const getUserOrders = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
+    const userId = user.id;
+    const role = user.role;
+
+    let whereClause = {};
+    if (role !== 'ADMIN' && role !== 'STAFF') {
+      whereClause = { user_id: userId };
+    }
 
     const orders = await prisma.order.findMany({
-      where: { user_id: userId },
+      where: whereClause,
       include: {
         items: { include: { product: { include: { images: true } } } },
         payments: true,
@@ -151,3 +159,110 @@ export const confirmDelivery = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// Tạo QR Code cho Staff (chứa token bảo mật)
+export const generateDeliveryQr = async (req: Request, res: Response) => {
+  try {
+    const orderId = Number(req.params.id);
+    if (isNaN(orderId)) {
+      res.status(400).json({ error: 'ID đơn hàng không hợp lệ' });
+      return;
+    }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId }
+    });
+
+    if (!existingOrder) {
+      res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+      return;
+    }
+
+    if (existingOrder.status !== 'PAID' && existingOrder.status !== 'IN_TRANSIT' && existingOrder.status !== 'PENDING') {
+      res.status(400).json({ error: `Đơn hàng đang ở trạng thái ${existingOrder.status}, không thể tạo mã QR giao hàng` });
+      return;
+    }
+
+    const token = jwt.sign(
+      { orderId: existingOrder.id, type: 'DELIVERY_CONFIRM' },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    // Trả về token và thông tin cơ bản
+    res.status(200).json({
+      qrData: token,
+      orderId: existingOrder.id
+    });
+  } catch (error: any) {
+    console.error('[Orders] Error generating delivery QR:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Customer quét mã QR để xác nhận (dùng token từ body)
+export const confirmDeliveryByToken = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      res.status(400).json({ error: 'Thiếu token xác nhận' });
+      return;
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    } catch (error) {
+      res.status(400).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
+      return;
+    }
+
+    if (decoded.type !== 'DELIVERY_CONFIRM' || !decoded.orderId) {
+      res.status(400).json({ error: 'Token không đúng định dạng' });
+      return;
+    }
+
+    const orderId = decoded.orderId;
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!existingOrder) {
+      res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+      return;
+    }
+
+    if (existingOrder.status === 'DELIVERED') {
+      res.status(400).json({ error: 'Đơn hàng này đã được xác nhận giao hàng trước đó' });
+      return;
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'DELIVERED' },
+    });
+
+    if (existingOrder.user_id) {
+      const productNames = existingOrder.items
+        .map((item) => item.product?.name)
+        .filter(Boolean)
+        .join(', ');
+
+      await prisma.notification.create({
+        data: {
+          user_id: existingOrder.user_id,
+          title: 'Giao hàng thành công',
+          message: `Bạn đã xác nhận nhận hàng thành công. Vui lòng đánh giá sản phẩm ${productNames || `trong đơn hàng #${orderId}`} nhé.`,
+        },
+      });
+    }
+
+    res.status(200).json({ message: 'Xác nhận nhận hàng thành công', order: updatedOrder });
+  } catch (error: any) {
+    console.error('[Orders] Error confirming delivery by token:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+

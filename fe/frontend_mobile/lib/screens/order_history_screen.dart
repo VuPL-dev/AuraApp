@@ -43,9 +43,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     switch (status) {
       case 'DELIVERED':
         return const Color(0xFF4CAF50);
-      case 'SUCCESS':
-        return const Color(0xFF2196F3);
-      case 'SHIPPING':
+      case 'PAID':
+        return Colors.green;
+      case 'IN_TRANSIT':
         return const Color(0xFFFF9800);
       case 'CANCELLED':
         return Colors.grey;
@@ -58,9 +58,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     switch (status) {
       case 'PENDING':
         return 'Chờ xử lý';
-      case 'SUCCESS':
+      case 'PAID':
         return 'Đã thanh toán';
-      case 'SHIPPING':
+      case 'IN_TRANSIT':
         return 'Đang giao';
       case 'DELIVERED':
         return 'Đã giao';

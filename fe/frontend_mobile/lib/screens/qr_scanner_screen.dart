@@ -27,12 +27,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
-      final String? code = barcode.rawValue;
-      if (code != null && code.startsWith('aura_order_')) {
+      final String? token = barcode.rawValue;
+      // Nếu QR code chứa chuỗi JSON/JWT hoặc bất cứ text nào dài hơn 20 ký tự (giả định là token)
+      if (token != null && token.length > 20) {
         setState(() => _isProcessing = true);
         controller.stop();
-        
-        final orderId = code.replaceFirst('aura_order_', '');
         
         // Hiện popup xác nhận
         final confirm = await showDialog<bool>(
@@ -40,7 +39,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           barrierDismissible: false,
           builder: (context) => AlertDialog(
             title: const Text('Xác nhận nhận hàng', style: TextStyle(color: Color(0xFFC8102E))),
-            content: Text('Sản phẩm của đơn hàng #$orderId đã được đưa đến tay bạn, bạn có xác nhận điều này không?'),
+            content: const Text('Sản phẩm của đơn hàng này đã được đưa đến tay bạn, bạn có xác nhận điều này không?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -56,7 +55,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         );
 
         if (confirm == true) {
-          await _confirmDelivery(orderId);
+          await _confirmDelivery(token);
         } else {
           setState(() => _isProcessing = false);
           controller.start();
@@ -66,7 +65,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     }
   }
 
-  Future<void> _confirmDelivery(String orderId) async {
+  Future<void> _confirmDelivery(String tokenString) async {
     try {
       showDialog(
         context: context,
@@ -74,13 +73,16 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFC8102E))),
       );
 
-      final token = await TokenStorage.getToken();
-      final response = await http.patch(
-        Uri.parse('${ApiConstants.baseUrl}/orders/$orderId/confirm-delivery'),
+      final token = await TokenStorage.getAccessToken();
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/orders/confirm-delivery'),
         headers: {
-          'Authorization': 'Bearer $token',
+          if (token != null) 'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({
+          'token': tokenString,
+        }),
       );
 
       Navigator.pop(context); // Close loading

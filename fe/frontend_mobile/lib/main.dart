@@ -488,7 +488,7 @@ class _CartScreenState extends State<CartScreen> {
 
         if (response.statusCode == 200) {
           final order = jsonDecode(response.body);
-          if (order['status'] == 'SUCCESS') {
+          if (order['status'] == 'PAID') {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Thanh toán thành công!'),
