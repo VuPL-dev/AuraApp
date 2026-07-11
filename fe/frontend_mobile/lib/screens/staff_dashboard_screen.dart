@@ -13,6 +13,7 @@ import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'product_list_view.dart';
 import 'product_form_view.dart';
+import 'staff_comments_screen.dart';
 
 class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -22,7 +23,7 @@ class StaffDashboardScreen extends StatefulWidget {
 }
 
 class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
-  String _currentView = 'DASHBOARD'; // DASHBOARD, ORDERS, PRODUCTS, PRODUCT_FORM
+  String _currentView = 'DASHBOARD'; // DASHBOARD, ORDERS, PRODUCTS, PRODUCT_FORM, COMMENTS
   Map<String, dynamic>? _editingProduct;
 
   // Orders
@@ -316,6 +317,17 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             onTap: _navigateToProducts,
           ),
           ListTile(
+            leading: const Icon(Icons.rate_review, color: Colors.white70),
+            title: const Text('Quản lý Đánh giá', style: TextStyle(color: Colors.white)),
+            onTap: () {
+              setState(() {
+                _currentView = 'COMMENTS';
+                _editingProduct = null;
+              });
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.add_box, color: Colors.white70),
             title: const Text('Thêm Sản phẩm', style: TextStyle(color: Colors.white)),
             onTap: _navigateToAddProduct,
@@ -392,6 +404,25 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               subtitle: const Text('Thêm, sửa, xoá sản phẩm trong cửa hàng'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: _navigateToProducts,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFf9b115),
+                child: Icon(Icons.rate_review, color: Colors.white),
+              ),
+              title: const Text('Quản lý Đánh giá',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Duyệt, ẩn, xoá và phản hồi bình luận'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => setState(() {
+                _currentView = 'COMMENTS';
+                _editingProduct = null;
+              }),
             ),
           ),
         ],
@@ -515,6 +546,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           onSaved: _handleProductSaved,
         );
         break;
+      case 'COMMENTS':
+        currentBody = const StaffCommentsScreen();
+        break;
       case 'DASHBOARD':
       default:
         currentBody = _buildDashboardView();
@@ -530,7 +564,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               ? 'Quản lý sản phẩm'
               : _currentView == 'PRODUCT_FORM'
                   ? (_editingProduct != null ? 'Sửa sản phẩm' : 'Thêm sản phẩm')
-                  : 'Staff Dashboard',
+                  : _currentView == 'COMMENTS'
+                      ? 'Quản lý Đánh giá'
+                      : 'Staff Dashboard',
           style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
@@ -548,7 +584,15 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           else
             IconButton(
               icon: const Icon(Icons.refresh, color: Colors.black54),
-              onPressed: _loadOrders,
+              tooltip: 'Tải lại',
+              onPressed: () {
+                if (_currentView == 'ORDERS') {
+                  _loadOrders();
+                } else if (_currentView == 'DASHBOARD') {
+                  _loadOrders();
+                }
+                // COMMENTS tự refresh nội bộ; nếu cần thì reload cả dashboard
+              },
             ),
         ],
       ),

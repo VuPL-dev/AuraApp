@@ -23,6 +23,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFC8102E)),
         useMaterial3: true,
+        fontFamily: 'Arial',
+        textTheme: const TextTheme().apply(fontFamily: 'Arial'),
       ),
       home: const LoginScreen(),
     );
