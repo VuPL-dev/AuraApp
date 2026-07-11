@@ -1,0 +1,23 @@
+44477f7  Add E2E integration tests test seed script and fix UI overflow issues
+e9bb581 Final merge of reviews and notifications features
+452f8c6 Merge remote-tracking branch 'origin/10-chức-năng-viết-comment-thông-báo-notifications-ui'
+5c9fd36 Merge pull request #13 from VuPL-dev/6-nen-tang-đanh-gia-bình-luan-reviews
+5ac3980 FE: Form đánh giá (rating) và hệ thống thông báo notifications
+9a7e511 BE: API tạo/lấy comment. FE: Hiển thị danh sách comment màn hình chi tiết
+39b75f9 Merge branch '2-giao-diện-quản-lý-sản-phẩm-của-staff'
+4115fd1 db
+ef6043e Xây dựng UI danh sách tất cả sản phẩm đang có cho Staff (dạng bảng hoặc danh sách chi tiết). Thêm chức năng (UI) sửa, xóa sản phẩm. Tích hợp tính năng chọn ảnh từ thiết bị (file picker/image picker) vào form Thêm/Sửa sản phẩm thay vì nhập link.
+57e3115 feat: Redesign Staff Dashboard UI to match Admin and add QR download logic
+5424f77 feat: Update order statuses to PAID, IN_TRANSIT, DELIVERED and implement PayOS webhook update
+6d9754e feat: tich hop quet ma QR
+5a82b7e Merge remote-tracking branch 'origin/feature/api-product-management-upload'
+4f03d70 WIP on main: 64d22fa Merge: order history va notifications vao main
+324276c index on main: 64d22fa Merge: order history va notifications vao main
+64d22fa Merge: order history va notifications vao main
+da7104a Merge: hoan thien admin dashboard vao main
+8fa5df8 feat: hoan thien admin dashboard - CRUD user + CoreUI UI
+8932e84 Add order history, review-reminder notifications, and product filters
+b5017dc feat: complete product CRUD APIs and image upload feature
+10cacd1 Keep-only-fe-on-fe-branch
+c125582 Keep-only-be-on-be-branch
+f0574e0 Initial-commit

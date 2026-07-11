@@ -156,6 +156,8 @@ model Review {
   rating     Int
   comment    String?
   created_at DateTime      @default(now())
+  is_hidden  Boolean       @default(false)
+  hidden_at  DateTime?
   replies    ReviewReply[]
 
   @@map("reviews")
