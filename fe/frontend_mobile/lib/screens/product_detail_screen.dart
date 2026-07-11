@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
+import '../services/cart_service.dart';
 
 const _kPrimary = Color(0xFFC8102E);
 
@@ -38,40 +39,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final formatted = p.toStringAsFixed(0)
         .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
     return '${formatted}đ';
-  }
-
-  void _showReplyDialog(int reviewId) {
-    final replyController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Trả lời đánh giá'),
-        content: TextField(
-          controller: replyController,
-          decoration: const InputDecoration(hintText: 'Nhập câu trả lời của bạn...'),
-          maxLines: 3,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
-          ElevatedButton(
-            onPressed: () async {
-              if (replyController.text.isEmpty) return;
-              final success = await ReviewService.submitReply(
-                reviewId: reviewId,
-                comment: replyController.text,
-              );
-              if (success && mounted) {
-                Navigator.pop(context);
-                _loadReviews();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã gửi trả lời!')));
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-            child: const Text('Gửi', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -168,18 +135,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(r['comment'] ?? '', style: const TextStyle(fontSize: 14)),
-                              Row(
-                                children: [
-                                  Text(
-                                    _formatDate(r['created_at']),
-                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                  ),
-                                  const Spacer(),
-                                  TextButton(
-                                    onPressed: () => _showReplyDialog(r['id']),
-                                    child: const Text('Trả lời', style: TextStyle(fontSize: 12, color: _kPrimary)),
-                                  ),
-                                ],
+                              Text(
+                                _formatDate(r['created_at']),
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
                               ),
                               // Display replies
                               if (replies.isNotEmpty)
@@ -228,7 +186,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         child: ElevatedButton(
           onPressed: () {
-            // Add to cart logic could be here
+            CartService.instance.add(product);
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('${product['name']} đã thêm vào giỏ!'), backgroundColor: _kPrimary),
