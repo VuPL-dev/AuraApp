@@ -8,9 +8,9 @@ class ApiConstants {
     // Đã đổi sang IP máy tính để có thể test trên điện thoại cùng mạng Wi-Fi
     if (kIsWeb) return 'http://localhost:5000/api';
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://192.168.88.51:5000/api';
+      return 'http://10.0.2.2:5000/api';
     }
-    return 'http://192.168.88.51:5000/api';
+    return 'http://10.0.2.2:5000/api';
   }
   
   static const Duration requestTimeout = Duration(seconds: 15);

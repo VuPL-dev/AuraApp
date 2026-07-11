@@ -24,7 +24,7 @@ class ReviewService {
         .get(uri)
         .timeout(_timeout);
     if (res.statusCode == 200) {
-      return jsonDecode(res.body) as List;
+      return jsonDecode(utf8.decode(res.bodyBytes)) as List;
     }
     return [];
   }
@@ -90,7 +90,7 @@ class ReviewService {
     final res = await http.get(uri, headers: headers).timeout(_timeout);
 
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as List;
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as List;
       return data
           .map((e) => Review.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -104,7 +104,7 @@ class ReviewService {
     final res = await http.get(uri, headers: headers).timeout(_timeout);
 
     if (res.statusCode == 200) {
-      return ReviewStats.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      return ReviewStats.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>);
     }
     throw Exception('Không thể tải thống kê (HTTP ${res.statusCode})');
   }
@@ -146,7 +146,7 @@ class ReviewService {
         .timeout(_timeout);
 
     if (res.statusCode == 201) {
-      return ReviewReply.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      return ReviewReply.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>);
     }
     throw Exception('Gửi phản hồi thất bại (HTTP ${res.statusCode})');
   }
@@ -164,7 +164,7 @@ class ReviewService {
         .timeout(_timeout);
 
     if (res.statusCode == 200) {
-      return ReviewReply.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      return ReviewReply.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>);
     }
     throw Exception('Cập nhật phản hồi thất bại (HTTP ${res.statusCode})');
   }
