@@ -22,6 +22,7 @@ model User {
   orders            Order[]
   notifications     Notification[]
   reviews           Review[]
+  review_replies    ReviewReply[]
   cart              Cart?
 
   @@map("users")
@@ -147,16 +148,29 @@ model Payment {
 }
 
 model Review {
-  id         Int      @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   product_id Int
-  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product    Product       @relation(fields: [product_id], references: [id], onDelete: Cascade)
   user_id    Int
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   rating     Int
   comment    String?
-  created_at DateTime @default(now())
+  created_at DateTime      @default(now())
+  replies    ReviewReply[]
 
   @@map("reviews")
+}
+
+model ReviewReply {
+  id         Int      @id @default(autoincrement())
+  review_id  Int
+  review     Review   @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  comment    String
+  created_at DateTime @default(now())
+
+  @@map("review_replies")
 }
 
 model Cart {
