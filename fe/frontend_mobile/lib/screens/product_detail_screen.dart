@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
+import '../services/cart_service.dart';
 
 const _kPrimary = Color(0xFFC8102E);
 
@@ -228,10 +229,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         child: ElevatedButton(
           onPressed: () {
-            // Add to cart logic could be here
-            Navigator.pop(context);
+            CartService.addToCart(product);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${product['name']} đã thêm vào giỏ!'), backgroundColor: _kPrimary),
+              SnackBar(
+                content: Text('${product['name']} đã thêm vào giỏ!'),
+                backgroundColor: _kPrimary,
+                duration: const Duration(seconds: 2),
+              ),
             );
           },
           style: ElevatedButton.styleFrom(

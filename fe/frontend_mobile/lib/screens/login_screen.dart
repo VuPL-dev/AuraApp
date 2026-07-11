@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/auth_models.dart';
 import '../services/auth_service.dart';
 import '../services/token_storage.dart';
+import '../services/cart_service.dart';
 import '../utils/validators.dart';
 import 'register_screen.dart';
 import 'welcome_screen.dart';
@@ -75,6 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _failedAttempts = 0;
       // Save token
       await TokenStorage.saveTokens(res.accessToken, null, email: req.email);
+      // Load cart từ DB
+      await CartService.loadCart();
       
       // Navigate based on role
       if (mounted) {

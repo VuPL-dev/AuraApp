@@ -1,14 +1,17 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/token_storage.dart';
+import '../services/cart_service.dart';
 import '../utils/api_constants.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 import 'account_screen.dart';
 import 'qr_scanner_screen.dart';
+import 'product_detail_screen.dart';
 import '../main.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -143,7 +146,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 ),
                                 onPressed: _openNotifications,
                               ),
-                              IconButton(icon: const Icon(Icons.shopping_cart_outlined,  color: Colors.white), onPressed: () {}),
+                              ValueListenableBuilder<List<CartItem>>(
+                                valueListenable: CartService.cartNotifier,
+                                builder: (context, cart, child) {
+                                  return IconButton(
+                                    icon: Badge(
+                                      label: Text('${cart.length}'),
+                                      isLabelVisible: cart.isNotEmpty,
+                                      backgroundColor: Colors.white,
+                                      textColor: const Color(0xFFC8102E),
+                                      child: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                                    ),
+                                    onPressed: () {
+                                      // Navigate to CartScreen in main.dart (uses _cart from parent state)
+                                      // We open via the global cart stored in CartService
+                                      final cartItems = CartService.cartNotifier.value
+                                          .map((c) => <String, dynamic>{
+                                            'id': c.productId,
+                                            'name': c.name,
+                                            'price': c.price,
+                                            'images': c.imageUrl != null ? [{'image_url': c.imageUrl}] : [],
+                                          }).toList();
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => CartScreen(cartItems: cartItems)));
+                                    },
+                                  );
+                                }
+                              ),
                               IconButton(
                                 icon: const Icon(Icons.logout, color: Colors.white),
                                 onPressed: _handleLogout,
@@ -321,10 +349,21 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     itemCount: _categories.length,
                     itemBuilder: (context, i) {
                       final cat = _categories[i];
-                      return Container(
-                        width: 72,
-                        margin: const EdgeInsets.only(right: 8),
-                        child: Column(children: [
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductListScreen(
+                                initialCategoryName: cat['label'] as String,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 72,
+                          margin: const EdgeInsets.only(right: 8),
+                          child: Column(children: [
                           Container(
                             width: 52, height: 52,
                             decoration: BoxDecoration(
@@ -338,7 +377,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               style: const TextStyle(
                                   fontSize: 11, fontWeight: FontWeight.w500),
                               textAlign: TextAlign.center),
-                        ]),
+                          ]),
+                        ),
                       );
                     },
                   ),
@@ -485,6 +525,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         currentIndex: _bottomNavIndex > 2 ? _bottomNavIndex : _bottomNavIndex, // handle logic if needed
         onTap: (index) {
           if (index == 2) return; // Middle button is FAB
+          if (index == 1) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductListScreen()));
+            return;
+          }
+          if (index == 3) {
+            final cartItems = CartService.cartNotifier.value
+                .map((c) => <String, dynamic>{
+                      'id': c.productId,
+                      'name': c.name,
+                      'price': c.price,
+                      'images': c.imageUrl != null ? [{'image_url': c.imageUrl}] : [],
+                    })
+                .toList();
+            Navigator.push(context, MaterialPageRoute(builder: (_) => CartScreen(cartItems: cartItems)));
+            return;
+          }
           if (index == 4) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
             return;

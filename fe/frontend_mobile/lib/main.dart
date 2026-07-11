@@ -9,8 +9,12 @@ import 'screens/order_history_screen.dart';
 import 'services/token_storage.dart';
 import 'services/notification_service.dart';
 import 'utils/api_constants.dart';
+import 'services/cart_service.dart';
+import 'screens/welcome_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await CartService.loadCart();
   runApp(const MyApp());
 }
 
@@ -33,7 +37,8 @@ class MyApp extends StatelessWidget {
 // Product List Screen  (trang 2 – "Xem tất cả")
 // ─────────────────────────────────────────────────────────────────────────────
 class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
+  final String? initialCategoryName;
+  const ProductListScreen({super.key, this.initialCategoryName});
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -163,6 +168,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   .map<Map<String, dynamic>>(
                       (c) => {'id': c['id'].toString(), 'name': c['name']})
                   .toList();
+                  
+              if (widget.initialCategoryName != null && _selectedCategoryId == null) {
+                final match = _categoryOptions.firstWhere(
+                  (c) => (c['name'] as String).toLowerCase() == widget.initialCategoryName!.toLowerCase(), 
+                  orElse: () => <String, dynamic>{}
+                );
+                if (match.isNotEmpty) {
+                  _selectedCategoryId = match['id'] as String;
+                  // Re-fetch products with the matched category filter
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _loadProducts());
+                }
+              }
             }
           });
         }
@@ -242,7 +259,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   void _addToCart(dynamic product) {
-    setState(() => _cart.add(product));
+    CartService.addToCart(product as Map<String, dynamic>);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('${product['name']} đã thêm vào giỏ!'),
       duration: const Duration(seconds: 1),
@@ -294,7 +311,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   padding: const EdgeInsets.all(12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    childAspectRatio: 0.72,
+                    childAspectRatio: 0.58,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                   ),
@@ -305,82 +322,104 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     final imageUrl = images.isNotEmpty
                         ? images[0]['image_url'] as String?
                         : null;
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ProductDetailScreen(product: product),
-                          ),
-                        ).then((_) => _loadProducts()); // Refresh if needed
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.06),
-                                blurRadius: 8)
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 8)
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Phần trên (ảnh): tap → detail
+                          Expanded(
+                            flex: 5,
+                            child: InkWell(
                               borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(12)),
-                              child: imageUrl != null
-                                  ? Image.network(imageUrl,
-                                      height: 140,
-                                      width: double.infinity,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) =>
-                                          _imgPlaceholder(140))
-                                  : _imgPlaceholder(140),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ProductDetailScreen(product: product),
+                                  ),
+                                ).then((_) => _loadProducts());
+                              },
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12)),
+                                child: imageUrl != null
+                                    ? Image.network(imageUrl,
+                                        height: double.infinity,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            _imgPlaceholder(100))
+                                    : _imgPlaceholder(100),
+                              ),
                             ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(product['name'] as String? ?? '',
+                          ),
+                          // Phần dưới (tên + giá + nút): tap vào tên → detail
+                          Expanded(
+                            flex: 4,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProductDetailScreen(
+                                              product: product),
+                                        ),
+                                      ).then((_) => _loadProducts());
+                                    },
+                                    child: Text(
+                                        product['name'] as String? ?? '',
                                         style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis),
-                                    const SizedBox(height: 4),
-                                    Text(_formatPrice(product['price']),
-                                        style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFFC8102E))),
-                                    const Spacer(),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 32,
-                                      child: ElevatedButton(
-                                        onPressed: () => _addToCart(product),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFFC8102E),
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.zero,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
-                                        ),
-                                        child: const Text('Thêm vào giỏ',
-                                            style: TextStyle(fontSize: 11)),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(_formatPrice(product['price']),
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFC8102E))),
+                                  const Spacer(),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 32,
+                                    child: ElevatedButton(
+                                      onPressed: () => _addToCart(product),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFFC8102E),
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.zero,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
                                       ),
+                                      child: const Text('Thêm vào giỏ',
+                                          style: TextStyle(fontSize: 11)),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -527,13 +566,18 @@ class _CartScreenState extends State<CartScreen> {
         final orderId = data['order_id'];
         if (checkoutUrl != null) {
           final uri = Uri.parse(checkoutUrl);
-          if (await canLaunchUrl(uri)) {
+          try {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
             if (orderId != null) _waitForPaymentSuccess(orderId as int, token);
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Không thể mở link thanh toán')));
+          } catch (_) {
+            try {
+              await launchUrl(uri, mode: LaunchMode.platformDefault);
+              if (orderId != null) _waitForPaymentSuccess(orderId as int, token);
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Không thể mở link: $e')));
+              }
             }
           }
         }
