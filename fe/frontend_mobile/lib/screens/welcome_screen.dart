@@ -211,7 +211,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 // ── Banner ────────────────────────────────────────────
                 Container(
                   margin: const EdgeInsets.all(12),
-                  height: 160,
+                  height: 175,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     gradient: const LinearGradient(
@@ -242,7 +242,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 shape: BoxShape.circle,
                                 color: const Color(0xFFC8102E).withOpacity(0.2)))),
                     Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -258,14 +258,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF1A1A2E))),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           const Text('Giảm đến 30%\nBộ sưu tập mới 2025',
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   height: 1.3)),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           GestureDetector(
                             onTap: () => Navigator.push(context,
                                 MaterialPageRoute(builder: (_) => const ProductListScreen())),
@@ -557,6 +557,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Product image
           ClipRRect(
@@ -565,40 +566,43 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             child: imageUrl != null
                 ? Image.network(
                     imageUrl,
-                    height: 130,
+                    height: 100,
                     width: double.infinity,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => _imagePlaceholder(),
                   )
                 : _imagePlaceholder(),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(price,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFC8102E))),
-                const SizedBox(height: 4),
-                Row(children: [
-                  const Icon(Icons.star, color: Color(0xFFFFD700), size: 12),
-                  const Text(' 4.9',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
-                  const Spacer(),
-                  Text('Còn ${product['stock_quantity'] ?? 0}',
-                      style:
-                          const TextStyle(fontSize: 9, color: Colors.grey)),
-                ]),
-              ],
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(name,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(price,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFC8102E))),
+                  const SizedBox(height: 2),
+                  Row(children: [
+                    const Icon(Icons.star, color: Color(0xFFFFD700), size: 12),
+                    const Text(' 4.9',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    Text('Còn ${product['stock_quantity'] ?? 0}',
+                        style:
+                            const TextStyle(fontSize: 9, color: Colors.grey)),
+                  ]),
+                ],
+              ),
             ),
           ),
         ],
@@ -608,7 +612,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   Widget _imagePlaceholder() {
     return Container(
-      height: 130,
+      height: 100,
       color: const Color(0xFFF5F5F5),
       child: const Center(
           child: Icon(Icons.image_outlined, size: 48, color: Colors.grey)),

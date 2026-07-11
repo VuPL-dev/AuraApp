@@ -240,16 +240,18 @@ class _ProductListViewState extends State<ProductListView> {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               const Text('Lọc kho: ',
                   style: TextStyle(fontSize: 13, color: Colors.black54)),
               _filterPill('Tất cả', _stockFilter == 'all'),
               _filterPill('Còn hàng', _stockFilter == 'in_stock'),
               _filterPill('Hết hàng', _stockFilter == 'out_of_stock'),
-              const Spacer(),
               Text(
-                '${_filteredProducts.length} sản phẩm',
+                ' (${_filteredProducts.length} sản phẩm)',
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey.shade700,
@@ -422,7 +424,7 @@ class _ProductListViewState extends State<ProductListView> {
             ),
           ),
           SizedBox(
-            width: 90,
+            width: 100,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

@@ -82,5 +82,3 @@ router.post('/:id/reply', authenticateToken, async (req: any, res) => {
 });
 
 export default router;
-
-export default router;
