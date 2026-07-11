@@ -22,14 +22,17 @@ const storage = multer.diskStorage({
 
 // Configure file filter
 const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const allowedExts = /jpeg|jpg|png|gif|webp/;
   const ext = path.extname(file.originalname).toLowerCase();
-  const mimetype = file.mimetype;
+  const mimetype = file.mimetype.toLowerCase();
 
-  const isValidExt = allowedTypes.test(ext);
-  const isValidMime = allowedTypes.test(mimetype);
+  // Accept if extension is allowed. Also accept when mimetype matches.
+  // Browsers and Flutter sometimes send generic mimetypes like
+  // 'application/octet-stream' even for valid image files.
+  const isValidExt = allowedExts.test(ext);
+  const isValidMime = allowedExts.test(mimetype);
 
-  if (isValidExt && isValidMime) {
+  if (isValidExt || isValidMime) {
     cb(null, true);
   } else {
     cb(new Error('Chỉ chấp nhận các định dạng ảnh (jpeg, jpg, png, gif, webp)!'));

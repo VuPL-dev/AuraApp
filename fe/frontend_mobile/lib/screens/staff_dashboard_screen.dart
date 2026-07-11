@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +11,8 @@ import '../utils/api_constants.dart';
 import '../services/token_storage.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'product_list_view.dart';
+import 'product_form_view.dart';
 
 class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -21,17 +22,9 @@ class StaffDashboardScreen extends StatefulWidget {
 }
 
 class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
-  String _currentView = 'DASHBOARD'; // DASHBOARD, ADD_PRODUCT, ORDERS
+  String _currentView = 'DASHBOARD'; // DASHBOARD, ORDERS, PRODUCTS, PRODUCT_FORM
+  Map<String, dynamic>? _editingProduct;
 
-  // Product Form
-  final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  final _priceCtrl = TextEditingController();
-  final _stockCtrl = TextEditingController();
-  final _imageUrlCtrl = TextEditingController();
-  bool _isLoadingProduct = false;
-  
   // Orders
   List<dynamic> _allOrders = [];
   bool _isLoadingOrders = true;
@@ -40,16 +33,6 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   void initState() {
     super.initState();
     _loadOrders();
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _descCtrl.dispose();
-    _priceCtrl.dispose();
-    _stockCtrl.dispose();
-    _imageUrlCtrl.dispose();
-    super.dispose();
   }
 
   void _goToLogin() {
@@ -74,7 +57,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         _goToLogin();
         return;
       }
-      
+
       final response = await http.get(
         Uri.parse('${ApiConstants.baseUrl}/orders'),
         headers: {
@@ -95,52 +78,6 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       }
     } catch (e) {
       if (mounted) setState(() => _isLoadingOrders = false);
-    }
-  }
-
-  Future<void> _submitProduct() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    setState(() => _isLoadingProduct = true);
-    try {
-      final token = await TokenStorage.getAccessToken();
-      final body = {
-        'name': _nameCtrl.text,
-        'description': _descCtrl.text,
-        'price': double.tryParse(_priceCtrl.text) ?? 0,
-        'stock_quantity': int.tryParse(_stockCtrl.text) ?? 0,
-        'images': _imageUrlCtrl.text.isNotEmpty ? [_imageUrlCtrl.text] : [],
-      };
-
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/products'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Thêm sản phẩm thành công!'), backgroundColor: Colors.green),
-          );
-          _formKey.currentState!.reset();
-          _nameCtrl.clear();
-          _descCtrl.clear();
-          _priceCtrl.clear();
-          _stockCtrl.clear();
-          _imageUrlCtrl.clear();
-          setState(() => _currentView = 'DASHBOARD');
-        }
-      } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: ${response.body}')));
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi kết nối: $e')));
-    } finally {
-      if (mounted) setState(() => _isLoadingProduct = false);
     }
   }
 
@@ -180,7 +117,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
   void _showQrPrintDialog(Map<String, dynamic> order, String qrData) {
     final GlobalKey boundaryKey = GlobalKey();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -249,11 +186,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       if (bytes != null && kIsWeb) {
         final blob = html.Blob([bytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
+        html.AnchorElement(href: url)
           ..setAttribute("download", "Aura_Order_$orderId.png")
           ..click();
         html.Url.revokeObjectUrl(url);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã tải nhãn mã QR thành công!'), backgroundColor: Colors.green),
@@ -278,10 +215,37 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
   // Analytics
   int get _totalOrders => _allOrders.length;
-  int get _pendingOrders => _allOrders.where((o) => o['status'] == 'PENDING').length;
   int get _paidOrders => _allOrders.where((o) => o['status'] == 'PAID').length;
   int get _inTransitOrders => _allOrders.where((o) => o['status'] == 'IN_TRANSIT').length;
   int get _deliveredOrders => _allOrders.where((o) => o['status'] == 'DELIVERED').length;
+
+  void _navigateToProducts() {
+    setState(() {
+      _currentView = 'PRODUCTS';
+      _editingProduct = null;
+    });
+  }
+
+  void _navigateToAddProduct() {
+    setState(() {
+      _currentView = 'PRODUCT_FORM';
+      _editingProduct = null;
+    });
+  }
+
+  void _handleProductEdit(Map<String, dynamic> product) {
+    setState(() {
+      _currentView = 'PRODUCT_FORM';
+      _editingProduct = product;
+    });
+  }
+
+  void _handleProductSaved() {
+    setState(() {
+      _currentView = 'PRODUCTS';
+      _editingProduct = null;
+    });
+  }
 
   Widget _buildDrawer() {
     return Drawer(
@@ -303,7 +267,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             leading: const Icon(Icons.dashboard, color: Colors.white70),
             title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
             onTap: () {
-              setState(() => _currentView = 'DASHBOARD');
+              setState(() {
+                _currentView = 'DASHBOARD';
+                _editingProduct = null;
+              });
               Navigator.pop(context);
             },
           ),
@@ -311,17 +278,22 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             leading: const Icon(Icons.list_alt, color: Colors.white70),
             title: const Text('Quản lý Đơn hàng', style: TextStyle(color: Colors.white)),
             onTap: () {
-              setState(() => _currentView = 'ORDERS');
+              setState(() {
+                _currentView = 'ORDERS';
+                _editingProduct = null;
+              });
               Navigator.pop(context);
             },
           ),
           ListTile(
+            leading: const Icon(Icons.inventory_2, color: Colors.white70),
+            title: const Text('Quản lý Sản phẩm', style: TextStyle(color: Colors.white)),
+            onTap: _navigateToProducts,
+          ),
+          ListTile(
             leading: const Icon(Icons.add_box, color: Colors.white70),
             title: const Text('Thêm Sản phẩm', style: TextStyle(color: Colors.white)),
-            onTap: () {
-              setState(() => _currentView = 'ADD_PRODUCT');
-              Navigator.pop(context);
-            },
+            onTap: _navigateToAddProduct,
           ),
           const Spacer(),
           const Divider(color: Colors.white24),
@@ -381,77 +353,23 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               _buildStatCard('Thành công', _deliveredOrders.toString(), const Color(0xFF3399ff), Icons.check_circle),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddProductView() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Card(
+          const SizedBox(height: 16),
+          Card(
             elevation: 2,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Thêm Sản Phẩm Mới', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Tên sản phẩm', border: OutlineInputBorder()),
-                    validator: (val) => val == null || val.isEmpty ? 'Bắt buộc' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _priceCtrl,
-                    decoration: const InputDecoration(labelText: 'Giá (VND)', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                    validator: (val) => val == null || val.isEmpty ? 'Bắt buộc' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _stockCtrl,
-                    decoration: const InputDecoration(labelText: 'Số lượng kho', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                    validator: (val) => val == null || val.isEmpty ? 'Bắt buộc' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _imageUrlCtrl,
-                    decoration: const InputDecoration(labelText: 'Link ảnh (URL)', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _descCtrl,
-                    decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder()),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _isLoadingProduct ? null : _submitProduct,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF321fdb),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: _isLoadingProduct 
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Lưu Sản Phẩm', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFF321fdb),
+                child: Icon(Icons.inventory_2, color: Colors.white),
               ),
+              title: const Text('Quản lý sản phẩm',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Thêm, sửa, xoá sản phẩm trong cửa hàng'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: _navigateToProducts,
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -490,13 +408,13 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       itemBuilder: (context, index) {
                         final order = _allOrders[index];
                         final status = order['status'];
-                        
+
                         Color statusColor;
-                        if (status == 'PAID') statusColor = const Color(0xFF2eb85c); // Success
-                        else if (status == 'IN_TRANSIT') statusColor = const Color(0xFFf9b115); // Warning
-                        else if (status == 'DELIVERED') statusColor = const Color(0xFF3399ff); // Info
-                        else if (status == 'PENDING') statusColor = const Color(0xFF9da5b1); // Secondary
-                        else statusColor = const Color(0xFFe55353); // Danger (CANCELLED)
+                        if (status == 'PAID') statusColor = const Color(0xFF2eb85c);
+                        else if (status == 'IN_TRANSIT') statusColor = const Color(0xFFf9b115);
+                        else if (status == 'DELIVERED') statusColor = const Color(0xFF3399ff);
+                        else if (status == 'PENDING') statusColor = const Color(0xFF9da5b1);
+                        else statusColor = const Color(0xFFe55353);
 
                         bool canGenerateQr = (status == 'PAID' || status == 'IN_TRANSIT' || status == 'PENDING');
 
@@ -507,7 +425,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                             child: const Icon(Icons.receipt_long, color: Colors.black54),
                           ),
                           title: Text(
-                            'Đơn hàng #${order['id']}', 
+                            'Đơn hàng #${order['id']}',
                             style: const TextStyle(fontWeight: FontWeight.w600)
                           ),
                           subtitle: Text('Tổng: ${order['total_amount']} VND', style: const TextStyle(fontSize: 13)),
@@ -551,11 +469,20 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   Widget build(BuildContext context) {
     Widget currentBody;
     switch (_currentView) {
-      case 'ADD_PRODUCT':
-        currentBody = _buildAddProductView();
-        break;
       case 'ORDERS':
         currentBody = _buildOrdersView();
+        break;
+      case 'PRODUCTS':
+        currentBody = ProductListView(
+          onEdit: _handleProductEdit,
+          onChanged: () => setState(() {}),
+        );
+        break;
+      case 'PRODUCT_FORM':
+        currentBody = ProductFormView(
+          product: _editingProduct,
+          onSaved: _handleProductSaved,
+        );
         break;
       case 'DASHBOARD':
       default:
@@ -567,26 +494,49 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       drawer: _buildDrawer(),
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.black87),
-        title: const Text('Staff Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: Text(
+          _currentView == 'PRODUCTS'
+              ? 'Quản lý sản phẩm'
+              : _currentView == 'PRODUCT_FORM'
+                  ? (_editingProduct != null ? 'Sửa sản phẩm' : 'Thêm sản phẩm')
+                  : 'Staff Dashboard',
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 1,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black54),
-            onPressed: _loadOrders,
-          ),
+          if (_currentView == 'PRODUCT_FORM')
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.black54),
+              tooltip: 'Đóng',
+              onPressed: () => setState(() {
+                _currentView = 'PRODUCTS';
+                _editingProduct = null;
+              }),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black54),
+              onPressed: _loadOrders,
+            ),
         ],
       ),
       body: currentBody,
-      floatingActionButton: _currentView == 'DASHBOARD' || _currentView == 'ORDERS'
-          ? FloatingActionButton(
-              onPressed: () {
-                setState(() => _currentView = 'ADD_PRODUCT');
-              },
+      floatingActionButton: _currentView == 'PRODUCTS'
+          ? FloatingActionButton.extended(
+              onPressed: _navigateToAddProduct,
               backgroundColor: const Color(0xFF321fdb),
-              child: const Icon(Icons.add, color: Colors.white),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Thêm sản phẩm',
+                  style: TextStyle(color: Colors.white)),
             )
-          : null,
+          : (_currentView == 'DASHBOARD' || _currentView == 'ORDERS')
+              ? FloatingActionButton(
+                  onPressed: _navigateToAddProduct,
+                  backgroundColor: const Color(0xFF321fdb),
+                  child: const Icon(Icons.add, color: Colors.white),
+                )
+              : null,
     );
   }
 }
