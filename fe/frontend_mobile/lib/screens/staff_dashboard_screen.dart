@@ -81,6 +81,31 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     }
   }
 
+  Future<void> _updateOrderStatus(int orderId, String status) async {
+    try {
+      final token = await TokenStorage.getAccessToken();
+      final response = await http.patch(
+        Uri.parse('${ApiConstants.baseUrl}/orders/$orderId/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'status': status}),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã cập nhật đơn hàng #$orderId thành $status')),
+          );
+          _loadOrders();
+        }
+      }
+    } catch (e) {
+      debugPrint('Update status error: $e');
+    }
+  }
+
   Future<void> _generateDeliveryQr(Map<String, dynamic> order) async {
     final orderId = order['id'];
     try {
@@ -453,6 +478,12 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                                   icon: const Icon(Icons.qr_code, color: Colors.black87),
                                   tooltip: 'Tạo Mã QR Giao Hàng',
                                   onPressed: () => _generateDeliveryQr(order),
+                                ),
+                              if (status != 'DELIVERED' && status != 'CANCELLED')
+                                IconButton(
+                                  icon: const Icon(Icons.check_circle_outline, color: Colors.green),
+                                  tooltip: 'Đánh dấu đã giao',
+                                  onPressed: () => _updateOrderStatus(order['id'], 'DELIVERED'),
                                 ),
                             ],
                           ),

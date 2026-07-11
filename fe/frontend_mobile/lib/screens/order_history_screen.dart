@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/order_service.dart';
+import 'rating_screen.dart';
 
 const _kPrimary = Color(0xFFC8102E);
 
@@ -149,6 +150,49 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                         fontSize: 15, fontWeight: FontWeight.bold, color: _kPrimary)),
                               ],
                             ),
+                            if (status == 'DELIVERED') ...[
+                              const Divider(height: 24),
+                              const Text('Đánh giá sản phẩm:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              ...items.map((item) {
+                                final product = item['product'] ?? {};
+                                final productName = product['name'] ?? 'Sản phẩm';
+                                final productId = product['id'];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(productName,
+                                            style: const TextStyle(fontSize: 12),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis),
+                                      ),
+                                      TextButton(
+                                        onPressed: productId == null ? null : () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => RatingScreen(
+                                                productId: productId,
+                                                productName: productName,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: const Text('Đánh giá', style: TextStyle(color: _kPrimary, fontSize: 12)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
                           ],
                         ),
                       );
