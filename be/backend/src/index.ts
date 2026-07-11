@@ -12,6 +12,7 @@ import orderRoutes from './routes/orderRoutes';
 import productRoutes from './routes/productRoutes';
 import userRoutes from './routes/userRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import reviewRoutes from './routes/reviewRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,11 +30,14 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Aura Accessories API is running' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const portNumber = typeof PORT === 'string' ? parseInt(PORT, 10) : PORT;
+
+app.listen(portNumber, '0.0.0.0', () => {
+  console.log(`Server is running on port ${portNumber} (all interfaces)`);
 });
