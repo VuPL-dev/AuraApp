@@ -41,6 +41,8 @@ dependencies:
   universal_html: ^2.3.0
   mobile_scanner: ^7.2.0
   qr_flutter: ^4.1.0
+  image_picker: ^1.1.2
+  http_parser: ^4.0.2
 
 dev_dependencies:
   flutter_test:
