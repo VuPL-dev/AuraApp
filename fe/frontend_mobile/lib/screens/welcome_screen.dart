@@ -1,12 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../models/category.dart';
 import '../services/auth_service.dart';
+import '../services/cart_service.dart';
+import '../services/category_service.dart';
 import '../services/notification_service.dart';
 import '../services/token_storage.dart';
 import '../utils/api_constants.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
+import 'product_detail_screen.dart';
 import 'account_screen.dart';
 import 'qr_scanner_screen.dart';
 import '../main.dart';
@@ -24,14 +28,26 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _loadingProducts = true;
   int _unreadCount = 0;
   int _bottomNavIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _categories = [
-    {'icon': Icons.watch_outlined,              'label': 'Đồng hồ',    'color': Color(0xFFE91E8C)},
-    {'icon': Icons.diamond_outlined,            'label': 'Nhẫn',       'color': Color(0xFF9C27B0)},
-    {'icon': Icons.stars_outlined,              'label': 'Dây chuyền', 'color': Color(0xFFFF9800)},
-    {'icon': Icons.auto_awesome,                'label': 'Bông tai',   'color': Color(0xFF2196F3)},
-    {'icon': Icons.workspace_premium_outlined,  'label': 'Cao cấp',    'color': Color(0xFF4CAF50)},
-    {'icon': Icons.card_giftcard,               'label': 'Quà tặng',   'color': Color(0xFFFF5722)},
+  List<Category> _categories = [];
+
+  static const List<IconData> _categoryIcons = [
+    Icons.watch_outlined,
+    Icons.diamond_outlined,
+    Icons.stars_outlined,
+    Icons.auto_awesome,
+    Icons.workspace_premium_outlined,
+    Icons.card_giftcard,
+  ];
+
+  static const List<Color> _categoryColors = [
+    Color(0xFFE91E8C),
+    Color(0xFF9C27B0),
+    Color(0xFFFF9800),
+    Color(0xFF2196F3),
+    Color(0xFF4CAF50),
+    Color(0xFFFF5722),
   ];
 
   @override
@@ -40,6 +56,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     _loadUserInfo();
     _loadProducts();
     _loadUnreadCount();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await CategoryService.listCategories();
+      if (mounted) setState(() => _categories = categories);
+    } catch (_) {
+      // Giữ danh sách trống, không chặn các phần khác của trang chủ
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -51,6 +83,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     await Navigator.push(
         context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     _loadUnreadCount();
+  }
+
+  void _openSearch([String? query]) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductListScreen(initialSearch: query ?? _searchController.text.trim()),
+      ),
+    );
+  }
+
+  void _openCategory(int categoryId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => ProductListScreen(initialCategoryId: categoryId.toString())),
+    );
+  }
+
+  void _openCart() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.instance.items)),
+    );
+  }
+
+  void _openProductDetail(dynamic product) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+    ).then((_) => _loadProducts());
   }
 
   Future<void> _loadUserInfo() async {
@@ -143,7 +206,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 ),
                                 onPressed: _openNotifications,
                               ),
-                              IconButton(icon: const Icon(Icons.shopping_cart_outlined,  color: Colors.white), onPressed: () {}),
+                              AnimatedBuilder(
+                                animation: CartService.instance,
+                                builder: (context, _) => IconButton(
+                                  icon: Badge(
+                                    label: Text('${CartService.instance.count}'),
+                                    isLabelVisible: !CartService.instance.isEmpty,
+                                    backgroundColor: const Color(0xFFFFD700),
+                                    textColor: Colors.black,
+                                    child: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                                  ),
+                                  onPressed: _openCart,
+                                ),
+                              ),
                               IconButton(
                                 icon: const Icon(Icons.logout, color: Colors.white),
                                 onPressed: _handleLogout,
@@ -158,13 +233,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           height: 40,
                           decoration: BoxDecoration(
                               color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                          child: const Row(children: [
-                            SizedBox(width: 12),
-                            Icon(Icons.search, color: Colors.grey, size: 20),
-                            SizedBox(width: 8),
-                            Text('Tìm kiếm sản phẩm...',
-                                style: TextStyle(color: Colors.grey, fontSize: 14)),
-                          ]),
+                          child: TextField(
+                            controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            decoration: const InputDecoration(
+                              hintText: 'Tìm kiếm sản phẩm...',
+                              hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                              prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            onSubmitted: (value) => _openSearch(value),
+                          ),
                         ),
                       ],
                     ),
@@ -315,33 +396,43 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 90,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, i) {
-                      final cat = _categories[i];
-                      return Container(
-                        width: 72,
-                        margin: const EdgeInsets.only(right: 8),
-                        child: Column(children: [
-                          Container(
-                            width: 52, height: 52,
-                            decoration: BoxDecoration(
-                                color: (cat['color'] as Color).withOpacity(0.15),
-                                shape: BoxShape.circle),
-                            child: Icon(cat['icon'] as IconData,
-                                color: cat['color'] as Color, size: 26),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(cat['label'] as String,
-                              style: const TextStyle(
-                                  fontSize: 11, fontWeight: FontWeight.w500),
-                              textAlign: TextAlign.center),
-                        ]),
-                      );
-                    },
-                  ),
+                  child: _categories.isEmpty
+                      ? const Center(
+                          child: Text('Chưa có danh mục nào.',
+                              style: TextStyle(color: Colors.grey, fontSize: 12)))
+                      : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          itemCount: _categories.length,
+                          itemBuilder: (context, i) {
+                            final cat = _categories[i];
+                            final icon = _categoryIcons[i % _categoryIcons.length];
+                            final color = _categoryColors[i % _categoryColors.length];
+                            return GestureDetector(
+                              onTap: () => _openCategory(cat.id),
+                              child: Container(
+                                width: 72,
+                                margin: const EdgeInsets.only(right: 8),
+                                child: Column(children: [
+                                  Container(
+                                    width: 52, height: 52,
+                                    decoration: BoxDecoration(
+                                        color: color.withOpacity(0.15),
+                                        shape: BoxShape.circle),
+                                    child: Icon(icon, color: color, size: 26),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(cat.name,
+                                      style: const TextStyle(
+                                          fontSize: 11, fontWeight: FontWeight.w500),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center),
+                                ]),
+                              ),
+                            );
+                          },
+                        ),
                 ),
 
                 const SizedBox(height: 20),
@@ -482,14 +573,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
-        currentIndex: _bottomNavIndex > 2 ? _bottomNavIndex : _bottomNavIndex, // handle logic if needed
+        currentIndex: _bottomNavIndex,
         onTap: (index) {
           if (index == 2) return; // Middle button is FAB
+          if (index == 0) {
+            setState(() => _bottomNavIndex = 0);
+            return;
+          }
+          if (index == 1) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductListScreen()));
+            return;
+          }
+          if (index == 3) {
+            _openCart();
+            return;
+          }
           if (index == 4) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
             return;
           }
-          setState(() => _bottomNavIndex = index);
         },
         items: const [
           BottomNavigationBarItem(
@@ -547,7 +649,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final price    = _formatPrice(product['price']);
     final name     = product['name'] as String? ?? '';
 
-    return Container(
+    return GestureDetector(
+      onTap: () => _openProductDetail(product),
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -606,6 +710,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

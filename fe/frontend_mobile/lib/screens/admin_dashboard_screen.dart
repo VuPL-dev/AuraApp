@@ -198,6 +198,99 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Future<void> _showAddUserDialog() async {
+    final emailCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    String selectedRole = 'CUSTOMER';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Thêm tài khoản mới'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Họ tên'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Mật khẩu (tối thiểu 8 ký tự)'),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: const InputDecoration(labelText: 'Quyền (Role)'),
+                    items: const [
+                      DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+                      DropdownMenuItem(value: 'STAFF', child: Text('STAFF')),
+                      DropdownMenuItem(value: 'CUSTOMER', child: Text('CUSTOMER')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setStateDialog(() => selectedRole = val);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    final token = await TokenStorage.getAccessToken();
+                    final response = await http.post(
+                      Uri.parse('${ApiConstants.baseUrl}/users'),
+                      headers: {
+                        'Authorization': 'Bearer $token',
+                        'Content-Type': 'application/json',
+                      },
+                      body: jsonEncode({
+                        'email': emailCtrl.text.trim(),
+                        'password': passwordCtrl.text,
+                        'full_name': nameCtrl.text,
+                        'role': selectedRole,
+                      }),
+                    );
+
+                    if (response.statusCode == 201) {
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tạo tài khoản thành công')));
+                        _fetchUsers();
+                      }
+                    } else {
+                      final data = jsonDecode(response.body);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['error'] ?? 'Tạo tài khoản thất bại')));
+                      }
+                    }
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                  }
+                },
+                child: const Text('Tạo'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   int get _totalUsers => _users.length;
   int get _activeUsers => _users.where((u) => (u['is_active'] ?? true) == true).length;
   int get _inactiveUsers => _users.where((u) => (u['is_active'] ?? true) == false).length;
@@ -433,10 +526,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Mở form thêm mới User
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng tạo User đang được phát triển.')));
-        },
+        onPressed: _showAddUserDialog,
         backgroundColor: const Color(0xFF321fdb),
         child: const Icon(Icons.add, color: Colors.white),
       ),
