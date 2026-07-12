@@ -474,49 +474,51 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
                         bool canGenerateQr = (status == 'PAID' || status == 'IN_TRANSIT' || status == 'PENDING');
 
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.grey.shade200,
-                            child: const Icon(Icons.receipt_long, color: Colors.black54),
-                          ),
-                          title: Text(
-                            'Đơn hàng #${order['id']}',
-                            style: const TextStyle(fontWeight: FontWeight.w600)
-                          ),
-                          subtitle: Text('Tổng: ${order['total_amount']} VND', style: const TextStyle(fontSize: 13)),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  borderRadius: BorderRadius.circular(20),
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade200)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Đơn hàng #${order['id']}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(12)),
+                                      child: Text(status, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    ),
+                                  ],
                                 ),
-                                child: Text(
-                                  status,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                const SizedBox(height: 6),
+                                Text('Tổng: ${order['total_amount']} VND', style: const TextStyle(fontSize: 13)),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (canGenerateQr)
+                                      OutlinedButton.icon(
+                                        icon: const Icon(Icons.qr_code, size: 16),
+                                        label: const Text('Mã QR'),
+                                        onPressed: () => _generateDeliveryQr(order),
+                                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), minimumSize: Size.zero),
+                                      ),
+                                    if (canGenerateQr) const SizedBox(width: 8),
+                                    if (status != 'DELIVERED' && status != 'CANCELLED')
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.check, size: 16),
+                                        label: const Text('Đã giao'),
+                                        onPressed: () => _updateOrderStatus(order['id'], 'DELIVERED'),
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), minimumSize: Size.zero),
+                                      ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              if (canGenerateQr)
-                                IconButton(
-                                  icon: const Icon(Icons.qr_code, color: Colors.black87),
-                                  tooltip: 'Tạo Mã QR Giao Hàng',
-                                  onPressed: () => _generateDeliveryQr(order),
-                                ),
-                              if (status != 'DELIVERED' && status != 'CANCELLED')
-                                IconButton(
-                                  icon: const Icon(Icons.check_circle_outline, color: Colors.green),
-                                  tooltip: 'Đánh dấu đã giao',
-                                  onPressed: () => _updateOrderStatus(order['id'], 'DELIVERED'),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },
