@@ -144,59 +144,130 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   void _showQrPrintDialog(Map<String, dynamic> order, String qrData) {
     final GlobalKey boundaryKey = GlobalKey();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nhãn Giao Hàng', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-        content: RepaintBoundary(
-          key: boundaryKey,
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.black, width: 2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('AURA APP', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                const SizedBox(height: 10),
-                Text('Order #${order['id']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                const Divider(color: Colors.black),
-                const SizedBox(height: 10),
-                QrImageView(
-                  data: qrData,
-                  version: QrVersions.auto,
-                  size: 200.0,
-                  backgroundColor: Colors.white,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final screenH = MediaQuery.of(context).size.height;
+        final qrSize = (MediaQuery.of(context).size.width * 0.55).clamp(140.0, 220.0);
+        return Container(
+          constraints: BoxConstraints(maxHeight: screenH * 0.85),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 10),
-                const Divider(color: Colors.black),
-                Text('Total: ${order['total_amount']} VND', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 5),
-                const Text('Scan to confirm delivery', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey)),
-              ],
-            ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Nhãn Giao Hàng',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: RepaintBoundary(
+                    key: boundaryKey,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.black87, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'AURA APP',
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Đơn hàng #${order['id']}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                          const Divider(color: Colors.black54, height: 20),
+                          Center(
+                            child: QrImageView(
+                              data: qrData,
+                              version: QrVersions.auto,
+                              size: qrSize,
+                              backgroundColor: Colors.white,
+                            ),
+                          ),
+                          const Divider(color: Colors.black54, height: 20),
+                          Text(
+                            'Tổng: ${order['total_amount']} VND',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Quét mã để xác nhận giao hàng',
+                            style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Actions
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 16, right: 16, top: 8,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Đóng'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _captureAndDownloadQr(boundaryKey, order['id']),
+                        icon: const Icon(Icons.download, size: 18),
+                        label: const Text('Tải xuống & In'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3399ff),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => _captureAndDownloadQr(boundaryKey, order['id']),
-            icon: const Icon(Icons.download),
-            label: const Text('Tải xuống & In'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3399ff),
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
