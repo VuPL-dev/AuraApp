@@ -108,7 +108,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void _openCart() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.instance.items)),
+      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.cartNotifier.value.map((c) => <String, dynamic>{ 'id': c.productId, 'name': c.name, 'price': c.price, 'images': c.imageUrl != null ? [{'image_url': c.imageUrl}] : [] }).toList())),
     );
   }
 
@@ -464,7 +464,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => ProductListScreen(
-                                initialCategoryName: cat['label'] as String,
+                                initialCategoryName: cat.name,
                               ),
                             ),
                           );
@@ -476,13 +476,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           Container(
                             width: 52, height: 52,
                             decoration: BoxDecoration(
-                                color: (cat['color'] as Color).withOpacity(0.15),
+                                color: (_categoryColors[i % _categoryColors.length]).withOpacity(0.15),
                                 shape: BoxShape.circle),
-                            child: Icon(cat['icon'] as IconData,
-                                color: cat['color'] as Color, size: 26),
+                            child: Icon(_categoryIcons[i % _categoryIcons.length],
+                                color: _categoryColors[i % _categoryColors.length], size: 26),
                           ),
                           const SizedBox(height: 6),
-                          Text(cat['label'] as String,
+                          Text(cat.name,
                               style: const TextStyle(
                                   fontSize: 11, fontWeight: FontWeight.w500),
                               textAlign: TextAlign.center),

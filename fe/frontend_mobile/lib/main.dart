@@ -41,7 +41,10 @@ class MyApp extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class ProductListScreen extends StatefulWidget {
   final String? initialCategoryName;
-  const ProductListScreen({super.key, this.initialCategoryName});
+  final String? initialSearch;
+  final String? initialCategoryId;
+  
+  const ProductListScreen({super.key, this.initialCategoryName, this.initialSearch, this.initialCategoryId});
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -273,7 +276,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _openCart() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.instance.items)),
+      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.cartNotifier.value.map((c) => <String, dynamic>{ 'id': c.productId, 'name': c.name, 'price': c.price, 'images': c.imageUrl != null ? [{'image_url': c.imageUrl}] : [] }).toList())),
     );
   }
 
@@ -291,12 +294,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
         backgroundColor: const Color(0xFFC8102E),
         foregroundColor: Colors.white,
         actions: [
-          AnimatedBuilder(
-            animation: CartService.instance,
-            builder: (context, _) => IconButton(
+          ValueListenableBuilder<List<CartItem>>(
+            valueListenable: CartService.cartNotifier,
+            builder: (context, cart, child) => IconButton(
               icon: Badge(
-                label: Text(CartService.instance.count.toString()),
-                isLabelVisible: !CartService.instance.isEmpty,
+                label: Text(cart.length.toString()),
+                isLabelVisible: cart.isNotEmpty,
                 backgroundColor: const Color(0xFFFFD700),
                 textColor: Colors.black,
                 child: const Icon(Icons.shopping_cart, color: Colors.white),
@@ -504,7 +507,7 @@ class _CartScreenState extends State<CartScreen> {
         flat.add(entry['product']);
       }
     }
-    CartService.instance.replaceAll(flat);
+    /* CartService.instance.replaceAll(flat); API Cart Sync handles it */
   }
 
   void _increase(int id) => setState(() {
@@ -734,7 +737,7 @@ class _CartScreenState extends State<CartScreen> {
         if (response.statusCode == 200) {
           final order = jsonDecode(response.body);
           if (order['status'] == 'PAID') {
-            CartService.instance.clear();
+            CartService.cartNotifier.value = [];
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Thanh toán thành công!'),
