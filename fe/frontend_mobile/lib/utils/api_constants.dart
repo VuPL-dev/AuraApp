@@ -15,8 +15,9 @@ class ApiConstants {
       if (host.contains('loca.lt')) {
         return 'https://auraapi.loca.lt/api';
       }
-      // Nếu truy cập từ thiết bị khác trong LAN
-      return 'http://192.168.1.52:5000/api';
+      // Nếu truy cập từ thiết bị khác trong LAN (IP có thể thay đổi)
+      // Tự động lấy đúng IP mà trình duyệt đang truy cập để gọi API
+      return 'http://${Uri.base.host}:5000/api';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:5000/api';
