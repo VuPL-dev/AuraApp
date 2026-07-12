@@ -728,76 +728,104 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           else if (user['role'] == 'STAFF') roleColor = const Color(0xFF3399FF);
                           else roleColor = const Color(0xFF9DA5B1);
 
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: CircleAvatar(
-                              backgroundColor: isActive ? const Color(0xFFC8102E).withOpacity(0.1) : Colors.grey.shade200,
-                              child: Icon(
-                                Icons.person,
-                                color: isActive ? const Color(0xFFC8102E) : Colors.grey.shade600,
-                              ),
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(color: Colors.grey.shade200),
                             ),
-                            title: Text(
-                              user['full_name'] ?? 'No Name', 
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough,
-                                color: isActive ? Colors.black87 : Colors.grey.shade500,
-                              )
-                            ),
-                            subtitle: Text(user['email'], style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: roleColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        user['role'] ?? 'CUSTOMER',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
+                            color: isActive ? Colors.white : Colors.grey.shade50,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: isActive ? const Color(0xFFC8102E).withOpacity(0.1) : Colors.grey.shade200,
+                                    child: Icon(
+                                      Icons.person,
+                                      color: isActive ? const Color(0xFFC8102E) : Colors.grey.shade500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          user['full_name'] ?? 'Chưa đặt tên',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough,
+                                            color: isActive ? Colors.black87 : Colors.grey.shade500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          user['email'] ?? '',
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: roleColor,
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                user['role'] ?? 'CUSTOMER',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(color: isActive ? Colors.green.shade200 : Colors.red.shade200),
+                                              ),
+                                              child: Text(
+                                                isActive ? 'Active' : 'Inactive',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isActive ? const Color(0xFF2eb85c) : const Color(0xFFe55353),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert, color: Colors.black54, size: 20),
+                                    onSelected: (val) {
+                                      if (val == 'edit') {
+                                        _showEditUserDialog(user);
+                                      } else if (val == 'toggle') {
+                                        _toggleUserStatus(user, !isActive);
+                                      }
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      const PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                                      PopupMenuItem(
+                                        value: 'toggle',
+                                        child: Text(isActive ? 'Khóa tài khoản' : 'Khôi phục tài khoản'),
                                       ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      isActive ? 'Active' : 'Inactive',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: isActive ? const Color(0xFF2eb85c) : const Color(0xFFe55353),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 8),
-                                PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert, color: Colors.black54),
-                                  onSelected: (val) {
-                                    if (val == 'edit') {
-                                      _showEditUserDialog(user);
-                                    } else if (val == 'toggle') {
-                                      _toggleUserStatus(user, !isActive);
-                                    }
-                                  },
-                                  itemBuilder: (ctx) => [
-                                    const PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                                    PopupMenuItem(
-                                      value: 'toggle', 
-                                      child: Text(isActive ? 'Khóa (Vô hiệu hóa)' : 'Khôi phục tài khoản'),
-                                    ),
-                                  ],
-                                )
-                              ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
