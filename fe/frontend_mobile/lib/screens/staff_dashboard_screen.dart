@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:gal/gal.dart';
 
 import '../utils/api_constants.dart';
 import '../services/token_storage.dart';
@@ -280,23 +281,33 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData?.buffer.asUint8List();
 
-      if (bytes != null && kIsWeb) {
-        final blob = html.Blob([bytes]);
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.AnchorElement(href: url)
-          ..setAttribute("download", "Aura_Order_$orderId.png")
-          ..click();
-        html.Url.revokeObjectUrl(url);
+      if (bytes != null) {
+        if (kIsWeb) {
+          final blob = html.Blob([bytes]);
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          html.AnchorElement(href: url)
+            ..setAttribute("download", "Aura_Order_$orderId.png")
+            ..click();
+          html.Url.revokeObjectUrl(url);
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã tải nhãn mã QR thành công!'), backgroundColor: Colors.green),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Đã tải nhãn mã QR thành công (Web)!'), backgroundColor: Colors.green),
+            );
+          }
+        } else {
+          await Gal.putImageBytes(bytes, name: "Aura_Order_$orderId");
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Đã lưu mã QR vào thư viện ảnh!'), backgroundColor: Colors.green),
+            );
+          }
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tính năng tải file chỉ hỗ trợ trên nền tảng Web hiện tại.')),
+            const SnackBar(content: Text('Không thể xử lý ảnh QR.')),
           );
         }
       }

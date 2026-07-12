@@ -6,7 +6,18 @@ class ApiConstants {
     if (envUrl.isNotEmpty) return envUrl;
     
     // Đã đổi sang IP máy tính để có thể test trên điện thoại cùng mạng Wi-Fi
-    if (kIsWeb) return 'http://localhost:5000/api';
+    if (kIsWeb) {
+      final host = Uri.base.host;
+      if (host == 'localhost' || host == '127.0.0.1') {
+        return 'http://localhost:5000/api';
+      }
+      // Nếu truy cập qua localtunnel (HTTPS), dùng tunnel API để tránh lỗi mixed content
+      if (host.contains('loca.lt')) {
+        return 'https://auraapi.loca.lt/api';
+      }
+      // Nếu truy cập từ thiết bị khác trong LAN
+      return 'http://192.168.1.52:5000/api';
+    }
     if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:5000/api';
     }
