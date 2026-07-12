@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../utils/api_constants.dart';
 import '../services/token_storage.dart';
 import '../services/auth_service.dart';
+import '../utils/custom_snackbar.dart';
 import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -139,14 +140,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       if (response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã $actionName tài khoản')));
+          CustomSnackBar.show(
+            context: context,
+            message: 'Đã $actionName tài khoản',
+            isError: false,
+          );
           _fetchUsers();
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi $actionName tài khoản')));
+        if (mounted) {
+          CustomSnackBar.show(
+            context: context,
+            message: 'Lỗi khi $actionName tài khoản',
+            isError: true,
+          );
+        }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      if (mounted) {
+        CustomSnackBar.show(
+          context: context,
+          message: 'Lỗi: $e',
+          isError: true,
+        );
+      }
     }
   }
 
@@ -243,14 +260,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     if (response.statusCode == 200) {
                       if (mounted) {
                         Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cập nhật thành công')));
+                        CustomSnackBar.show(
+                          context: context,
+                          message: 'Cập nhật thành công',
+                          isError: false,
+                        );
                         _fetchUsers();
                       }
                     } else {
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cập nhật thất bại')));
+                      if (mounted) {
+                        CustomSnackBar.show(
+                          context: context,
+                          message: 'Cập nhật thất bại',
+                          isError: true,
+                        );
+                      }
                     }
                   } catch (e) {
-                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                     if (mounted) {
+                       CustomSnackBar.show(
+                         context: context,
+                         message: 'Lỗi: $e',
+                         isError: true,
+                       );
+                     }
                   } finally {
                     setStateDialog(() => isSaving = false);
                   }
@@ -384,17 +417,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     if (response.statusCode == 201) {
                       if (mounted) {
                         Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tạo tài khoản thành công')));
+                        CustomSnackBar.show(
+                          context: context,
+                          message: 'Tạo tài khoản thành công',
+                          isError: false,
+                        );
                         _fetchUsers();
                       }
                     } else {
                       final data = jsonDecode(response.body);
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['error'] ?? 'Tạo tài khoản thất bại')));
+                        CustomSnackBar.show(
+                          context: context,
+                          message: data['error'] ?? 'Tạo tài khoản thất bại',
+                          isError: true,
+                        );
                       }
                     }
                   } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                    if (mounted) {
+                      CustomSnackBar.show(
+                        context: context,
+                        message: 'Lỗi: $e',
+                        isError: true,
+                      );
+                    }
                   } finally {
                     setStateDialog(() => isSaving = false);
                   }

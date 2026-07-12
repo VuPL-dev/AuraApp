@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/auth_models.dart';
 import '../services/auth_service.dart';
 import '../utils/validators.dart';
+import '../utils/custom_snackbar.dart';
 import 'verify_email_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -45,8 +46,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (res.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đăng ký thành công, vui lòng xác thực!')),
+      CustomSnackBar.show(
+        context: context,
+        message: 'Đăng ký thành công, vui lòng xác thực!',
+        isError: false,
       );
       Navigator.pushReplacement(
         context,
@@ -55,8 +58,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.message ?? 'Đăng ký thất bại')),
+      CustomSnackBar.show(
+        context: context,
+        message: res.message ?? 'Đăng ký thất bại',
+        isError: true,
       );
     }
   }

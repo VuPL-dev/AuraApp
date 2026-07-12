@@ -4,6 +4,7 @@ import '../models/auth_models.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'login_screen.dart';
+import '../utils/custom_snackbar.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   final String email;
@@ -60,8 +61,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   void _handleExpired() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã hết 1 phút, vui lòng đăng ký lại để nhận mã mới!')),
+    CustomSnackBar.show(
+      context: context,
+      message: 'Đã hết 1 phút, vui lòng đăng ký lại để nhận mã mới!',
+      isError: true,
     );
     Navigator.pushReplacement(
       context,
@@ -72,8 +75,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Future<void> _handleVerify() async {
     final otp = _otpController.text.trim();
     if (otp.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập mã OTP')),
+      CustomSnackBar.show(
+        context: context,
+        message: 'Vui lòng nhập mã OTP',
+        isError: true,
       );
       return;
     }
@@ -88,8 +93,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
     if (success) {
       _timer?.cancel();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Xác thực thành công! Vui lòng đăng nhập.')),
+      CustomSnackBar.show(
+        context: context,
+        message: 'Xác thực thành công! Vui lòng đăng nhập.',
+        isError: false,
       );
       // Navigate to Login
       Navigator.pushAndRemoveUntil(
@@ -98,8 +105,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         (route) => false,
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mã OTP không đúng hoặc đã hết hạn')),
+      CustomSnackBar.show(
+        context: context,
+        message: 'Mã OTP không đúng hoặc đã hết hạn',
+        isError: true,
       );
     }
   }
@@ -113,8 +122,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     setState(() => _isLoading = false);
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi lại mã xác thực!')),
+      CustomSnackBar.show(
+        context: context,
+        message: 'Đã gửi lại mã xác thực!',
+        isError: false,
       );
       // Reset cooldown and expiration
       setState(() {
@@ -123,8 +134,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         _expireCountdown = 60; // reset the 1 minute limit
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gửi thất bại, vui lòng thử lại sau.')),
+      CustomSnackBar.show(
+        context: context,
+        message: 'Gửi thất bại, vui lòng thử lại sau.',
+        isError: true,
       );
     }
   }

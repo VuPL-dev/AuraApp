@@ -4,6 +4,7 @@ import '../models/auth_models.dart';
 import '../services/auth_service.dart';
 import '../services/token_storage.dart';
 import '../utils/validators.dart';
+import '../utils/custom_snackbar.dart';
 import 'register_screen.dart';
 import 'welcome_screen.dart';
 import 'admin_dashboard_screen.dart';
@@ -100,12 +101,16 @@ class _LoginScreenState extends State<LoginScreen> {
       _failedAttempts++;
       if (_failedAttempts >= 5) {
         _startLockTimer();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sai quá 5 lần. Vui lòng đợi 1 phút.')),
+        CustomSnackBar.show(
+          context: context,
+          message: 'Sai quá 5 lần. Vui lòng đợi 1 phút.',
+          isError: true,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.message ?? 'Đăng nhập thất bại')),
+        CustomSnackBar.show(
+          context: context,
+          message: res.message ?? 'Đăng nhập thất bại',
+          isError: true,
         );
       }
     }
