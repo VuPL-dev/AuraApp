@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../utils/api_constants.dart';
 import '../services/token_storage.dart';
 import '../services/auth_service.dart';
+import '../utils/custom_snackbar.dart';
 import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -16,11 +17,34 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<dynamic> _users = [];
   bool _loading = true;
+  String _searchQuery = '';
+  String _selectedRoleFilter = 'ALL';
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<dynamic> get _filteredUsers {
+    return _users.where((u) {
+      final email = (u['email'] as String? ?? '').toLowerCase();
+      final name = (u['full_name'] as String? ?? '').toLowerCase();
+      final matchesSearch = email.contains(_searchQuery.toLowerCase()) ||
+          name.contains(_searchQuery.toLowerCase());
+
+      final role = u['role'] as String? ?? 'CUSTOMER';
+      final matchesRole = _selectedRoleFilter == 'ALL' || role == _selectedRoleFilter;
+
+      return matchesSearch && matchesRole;
+    }).toList();
   }
 
   Future<void> _fetchUsers() async {
@@ -74,11 +98,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Xác nhận', style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text('Bạn có chắc muốn $actionName tài khoản này?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(actionBtn, style: TextStyle(color: newStatus ? Colors.green : Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: newStatus ? Colors.green : const Color(0xFFC8102E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(actionBtn),
+          ),
         ],
       ),
     );
@@ -104,66 +140,111 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       if (response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã $actionName tài khoản')));
+          CustomSnackBar.show(
+            context: context,
+            message: 'Đã $actionName tài khoản',
+            isError: false,
+          );
           _fetchUsers();
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi $actionName tài khoản')));
+        if (mounted) {
+          CustomSnackBar.show(
+            context: context,
+            message: 'Lỗi khi $actionName tài khoản',
+            isError: true,
+          );
+        }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      if (mounted) {
+        CustomSnackBar.show(
+          context: context,
+          message: 'Lỗi: $e',
+          isError: true,
+        );
+      }
     }
   }
 
   Future<void> _showEditUserDialog(Map<String, dynamic> user) async {
+    final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(text: user['full_name'] ?? '');
     String selectedRole = user['role'] ?? 'CUSTOMER';
     bool isActive = user['is_active'] ?? true;
+    bool isSaving = false;
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateDialog) {
           return AlertDialog(
-            title: const Text('Sửa tài khoản'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Sửa tài khoản', style: TextStyle(fontWeight: FontWeight.bold)),
             content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Họ tên'),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    decoration: const InputDecoration(labelText: 'Quyền (Role)'),
-                    items: const [
-                      DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
-                      DropdownMenuItem(value: 'STAFF', child: Text('STAFF')),
-                      DropdownMenuItem(value: 'CUSTOMER', child: Text('CUSTOMER')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) setStateDialog(() => selectedRole = val);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Đang hoạt động (is_active)'),
-                    value: isActive,
-                    onChanged: (val) => setStateDialog(() => isActive = val),
-                  ),
-                ],
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Họ tên',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Vui lòng nhập họ tên';
+                        return null;
+                      },
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedRole,
+                      decoration: InputDecoration(
+                        labelText: 'Quyền (Role)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+                        DropdownMenuItem(value: 'STAFF', child: Text('STAFF')),
+                        DropdownMenuItem(value: 'CUSTOMER', child: Text('CUSTOMER')),
+                      ],
+                      onChanged: isSaving ? null : (val) {
+                        if (val != null) setStateDialog(() => selectedRole = val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('Đang hoạt động', style: TextStyle(fontSize: 14)),
+                      value: isActive,
+                      activeColor: const Color(0xFFC8102E),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: isSaving ? null : (val) => setStateDialog(() => isActive = val),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+              ),
               ElevatedButton(
-                onPressed: () async {
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC8102E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: isSaving ? null : () async {
+                  if (!formKey.currentState!.validate()) return;
+                  setStateDialog(() => isSaving = true);
                   try {
                     final token = await TokenStorage.getAccessToken();
                     final body = {
-                      'full_name': nameCtrl.text,
+                      'full_name': nameCtrl.text.trim(),
                       'role': selectedRole,
                       'is_active': isActive,
                     };
@@ -179,21 +260,199 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     if (response.statusCode == 200) {
                       if (mounted) {
                         Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cập nhật thành công')));
+                        CustomSnackBar.show(
+                          context: context,
+                          message: 'Cập nhật thành công',
+                          isError: false,
+                        );
                         _fetchUsers();
                       }
                     } else {
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cập nhật thất bại')));
+                      if (mounted) {
+                        CustomSnackBar.show(
+                          context: context,
+                          message: 'Cập nhật thất bại',
+                          isError: true,
+                        );
+                      }
                     }
                   } catch (e) {
-                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                     if (mounted) {
+                       CustomSnackBar.show(
+                         context: context,
+                         message: 'Lỗi: $e',
+                         isError: true,
+                       );
+                     }
+                  } finally {
+                    setStateDialog(() => isSaving = false);
                   }
                 },
-                child: const Text('Lưu'),
+                child: isSaving
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Lưu'),
               ),
             ],
           );
         }
+      ),
+    );
+  }
+
+  Future<void> _showAddUserDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final emailCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    String selectedRole = 'CUSTOMER';
+    bool isSaving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Thêm tài khoản mới', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Vui lòng nhập Email';
+                        final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+                        if (!emailRegex.hasMatch(val.trim())) return 'Email không đúng định dạng';
+                        return null;
+                      },
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Họ tên',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Vui lòng nhập họ tên';
+                        return null;
+                      },
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: passwordCtrl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Mật khẩu',
+                        hintText: 'Tối thiểu 8 ký tự',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return 'Vui lòng nhập mật khẩu';
+                        if (val.length < 8) return 'Mật khẩu phải dài tối thiểu 8 ký tự';
+                        return null;
+                      },
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedRole,
+                      decoration: InputDecoration(
+                        labelText: 'Quyền (Role)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+                        DropdownMenuItem(value: 'STAFF', child: Text('STAFF')),
+                        DropdownMenuItem(value: 'CUSTOMER', child: Text('CUSTOMER')),
+                      ],
+                      onChanged: isSaving ? null : (val) {
+                        if (val != null) setStateDialog(() => selectedRole = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC8102E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: isSaving ? null : () async {
+                  if (!formKey.currentState!.validate()) return;
+                  setStateDialog(() => isSaving = true);
+                  try {
+                    final token = await TokenStorage.getAccessToken();
+                    final response = await http.post(
+                      Uri.parse('${ApiConstants.baseUrl}/users'),
+                      headers: {
+                        'Authorization': 'Bearer $token',
+                        'Content-Type': 'application/json',
+                      },
+                      body: jsonEncode({
+                        'email': emailCtrl.text.trim(),
+                        'password': passwordCtrl.text,
+                        'full_name': nameCtrl.text.trim(),
+                        'role': selectedRole,
+                      }),
+                    );
+
+                    if (response.statusCode == 201) {
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        CustomSnackBar.show(
+                          context: context,
+                          message: 'Tạo tài khoản thành công',
+                          isError: false,
+                        );
+                        _fetchUsers();
+                      }
+                    } else {
+                      final data = jsonDecode(response.body);
+                      if (mounted) {
+                        CustomSnackBar.show(
+                          context: context,
+                          message: data['error'] ?? 'Tạo tài khoản thất bại',
+                          isError: true,
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      CustomSnackBar.show(
+                        context: context,
+                        message: 'Lỗi: $e',
+                        isError: true,
+                      );
+                    }
+                  } finally {
+                    setStateDialog(() => isSaving = false);
+                  }
+                },
+                child: isSaving
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Tạo'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -205,28 +464,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildDrawer() {
     return Drawer(
-      backgroundColor: const Color(0xFF3c4b64),
+      backgroundColor: const Color(0xFF1A1A2E),
       child: Column(
         children: [
-          Container(
-            height: 150,
-            width: double.infinity,
-            color: const Color(0xFF303c54),
-            padding: const EdgeInsets.only(bottom: 20),
-            alignment: Alignment.bottomCenter,
-            child: const Text(
-              'Aura Admin',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          const UserAccountsDrawerHeader(
+            decoration: BoxDecoration(
+              color: Color(0xFFC8102E),
             ),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.admin_panel_settings, color: Color(0xFFC8102E), size: 36),
+            ),
+            accountName: Text('Quản trị viên', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            accountEmail: Text('admin@aura.com'),
           ),
           ListTile(
-            leading: const Icon(Icons.dashboard, color: Colors.white70),
+            leading: const Icon(Icons.dashboard_outlined, color: Colors.white70),
             title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
             onTap: () => Navigator.pop(context),
           ),
           ListTile(
-            leading: const Icon(Icons.people, color: Colors.white70),
-            title: const Text('Users', style: TextStyle(color: Colors.white)),
+            leading: const Icon(Icons.people_outline, color: Colors.white70),
+            title: const Text('Quản lý người dùng', style: TextStyle(color: Colors.white)),
             onTap: () => Navigator.pop(context),
           ),
           const Spacer(),
@@ -244,24 +503,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildStatCard(String title, String value, Color color, IconData icon) {
     return Expanded(
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border(top: BorderSide(color: color, width: 4)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: Colors.grey.shade400, size: 24),
-              const SizedBox(height: 8),
-              Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-            ],
-          ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -269,22 +553,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildStatCards() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Column(
         children: [
           Row(
             children: [
-              _buildStatCard('Tổng Users', _totalUsers.toString(), const Color(0xFF321fdb), Icons.people),
-              const SizedBox(width: 16),
-              _buildStatCard('Active', _activeUsers.toString(), const Color(0xFF2eb85c), Icons.check_circle_outline),
+              _buildStatCard('Tổng Users', _totalUsers.toString(), const Color(0xFFC8102E), Icons.people),
+              const SizedBox(width: 12),
+              _buildStatCard('Đang hoạt động', _activeUsers.toString(), const Color(0xFF2EB85C), Icons.check_circle_outline),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
-              _buildStatCard('Inactive', _inactiveUsers.toString(), const Color(0xFFe55353), Icons.block),
-              const SizedBox(width: 16),
-              _buildStatCard('Admins', _adminUsers.toString(), const Color(0xFF3399ff), Icons.admin_panel_settings),
+              _buildStatCard('Bị khóa', _inactiveUsers.toString(), Colors.orange, Icons.block),
+              const SizedBox(width: 12),
+              _buildStatCard('Quản trị', _adminUsers.toString(), const Color(0xFF3399FF), Icons.admin_panel_settings),
             ],
           ),
         ],
@@ -292,15 +576,118 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget _buildSearchAndFilters() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        children: [
+          // Search Bar
+          TextField(
+            controller: _searchController,
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Tìm kiếm theo tên hoặc email...',
+              hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFFC8102E), size: 20),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFC8102E), width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _buildFilterChip('Tất cả', 'ALL'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Quản trị (Admin)', 'ADMIN'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Nhân viên (Staff)', 'STAFF'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Khách hàng', 'CUSTOMER'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _selectedRoleFilter == value;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : Colors.grey.shade700,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: const Color(0xFFC8102E),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFFC8102E) : Colors.grey.shade200,
+        ),
+      ),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _selectedRoleFilter = value;
+          });
+        }
+      },
+    );
+  }
+
   Widget _buildUserList() {
+    final list = _filteredUsers;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
-        ]
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -309,100 +696,112 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200))
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
             ),
-            child: const Text('Danh sách tài khoản', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Danh sách tài khoản', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                Text(
+                  'Tổng cộng: ${list.length}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ),
           Expanded(
             child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _users.isEmpty
-                  ? const Center(child: Text('Không có tài khoản nào.'))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(0),
-                      itemCount: _users.length,
-                      separatorBuilder: (context, index) => Divider(color: Colors.grey.shade200, height: 1),
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        final isActive = user['is_active'] ?? true;
-                        
-                        // Badge CoreUI colors
-                        Color roleColor;
-                        if (user['role'] == 'ADMIN') roleColor = const Color(0xFFe55353); // Danger
-                        else if (user['role'] == 'STAFF') roleColor = const Color(0xFF3399ff); // Info
-                        else roleColor = const Color(0xFF9da5b1); // Secondary
+                ? const Center(child: CircularProgressIndicator())
+                : list.isEmpty
+                    ? const Center(child: Text('Không tìm thấy tài khoản nào.'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(0),
+                        itemCount: list.length,
+                        separatorBuilder: (context, index) => Divider(color: Colors.grey.shade100, height: 1),
+                        itemBuilder: (context, index) {
+                          final user = list[index];
+                          final isActive = user['is_active'] ?? true;
+                          
+                          Color roleColor;
+                          if (user['role'] == 'ADMIN') roleColor = const Color(0xFFC8102E);
+                          else if (user['role'] == 'STAFF') roleColor = const Color(0xFF3399FF);
+                          else roleColor = const Color(0xFF9DA5B1);
 
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          leading: CircleAvatar(
-                            backgroundColor: isActive ? const Color(0xFF321fdb) : Colors.grey.shade400,
-                            child: const Icon(Icons.person, color: Colors.white),
-                          ),
-                          title: Text(
-                            user['full_name'] ?? 'No Name', 
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough,
-                              color: isActive ? Colors.black87 : Colors.grey,
-                            )
-                          ),
-                          subtitle: Text(user['email'], style: const TextStyle(fontSize: 12)),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: roleColor,
-                                      borderRadius: BorderRadius.circular(20), // Pill shape
-                                    ),
-                                    child: Text(
-                                      user['role'] ?? 'CUSTOMER',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            leading: CircleAvatar(
+                              backgroundColor: isActive ? const Color(0xFFC8102E).withOpacity(0.1) : Colors.grey.shade200,
+                              child: Icon(
+                                Icons.person,
+                                color: isActive ? const Color(0xFFC8102E) : Colors.grey.shade600,
+                              ),
+                            ),
+                            title: Text(
+                              user['full_name'] ?? 'No Name', 
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                decoration: isActive ? TextDecoration.none : TextDecoration.lineThrough,
+                                color: isActive ? Colors.black87 : Colors.grey.shade500,
+                              )
+                            ),
+                            subtitle: Text(user['email'], style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: roleColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        user['role'] ?? 'CUSTOMER',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    isActive ? 'Active' : 'Inactive',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isActive ? const Color(0xFF2eb85c) : const Color(0xFFe55353),
-                                      fontWeight: FontWeight.w600,
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      isActive ? 'Active' : 'Inactive',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isActive ? const Color(0xFF2eb85c) : const Color(0xFFe55353),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, color: Colors.black54),
-                                onSelected: (val) {
-                                  if (val == 'edit') {
-                                    _showEditUserDialog(user);
-                                  } else if (val == 'toggle') {
-                                    _toggleUserStatus(user, !isActive);
-                                  }
-                                },
-                                itemBuilder: (ctx) => [
-                                  const PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                                  PopupMenuItem(
-                                    value: 'toggle', 
-                                    child: Text(isActive ? 'Khóa (Vô hiệu hóa)' : 'Khôi phục tài khoản'),
-                                  ),
-                                ],
-                              )
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.black54),
+                                  onSelected: (val) {
+                                    if (val == 'edit') {
+                                      _showEditUserDialog(user);
+                                    } else if (val == 'toggle') {
+                                      _toggleUserStatus(user, !isActive);
+                                    }
+                                  },
+                                  itemBuilder: (ctx) => [
+                                    const PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                                    PopupMenuItem(
+                                      value: 'toggle', 
+                                      child: Text(isActive ? 'Khóa (Vô hiệu hóa)' : 'Khôi phục tài khoản'),
+                                    ),
+                                  ],
+                                )
+                              ],
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -412,13 +811,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // Light background for dashboard
+      backgroundColor: Colors.grey.shade100,
       drawer: _buildDrawer(),
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.black87), // Dark icons for drawer toggle
-        title: const Text('Admin Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.black87),
+        title: const Text('Admin Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
-        elevation: 1, // Subtle shadow
+        elevation: 0.5,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black54),
@@ -429,15 +828,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: Column(
         children: [
           _buildStatCards(),
+          _buildSearchAndFilters(),
           Expanded(child: _buildUserList()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Mở form thêm mới User
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng tạo User đang được phát triển.')));
-        },
-        backgroundColor: const Color(0xFF321fdb),
+        onPressed: _showAddUserDialog,
+        backgroundColor: const Color(0xFFC8102E),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

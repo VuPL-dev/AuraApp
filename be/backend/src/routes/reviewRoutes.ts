@@ -52,8 +52,8 @@ router.get('/product/:productId', async (req, res) => {
   }
 });
 
-// POST /api/reviews/:id/reply - Trả lời một đánh giá
-router.post('/:id/reply', authenticateToken, async (req: any, res) => {
+// POST /api/reviews/:id/reply - Trả lời một đánh giá (chỉ Staff/Admin)
+router.post('/:id/reply', authenticateToken, authorizeRole(['ADMIN', 'STAFF']), async (req: any, res) => {
   try {
     const { comment } = req.body;
     const review_id = Number(req.params.id);

@@ -8,6 +8,7 @@ import 'screens/product_detail_screen.dart';
 import 'screens/order_history_screen.dart';
 import 'services/token_storage.dart';
 import 'services/notification_service.dart';
+import 'services/cart_service.dart';
 import 'utils/api_constants.dart';
 import 'services/cart_service.dart';
 import 'screens/welcome_screen.dart';
@@ -49,7 +50,6 @@ class ProductListScreen extends StatefulWidget {
 class _ProductListScreenState extends State<ProductListScreen> {
   List<dynamic> _products = [];
   bool _loading = true;
-  final List<dynamic> _cart = [];
 
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoryId;
@@ -61,6 +61,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialSearch != null) _searchController.text = widget.initialSearch!;
+    _selectedCategoryId = widget.initialCategoryId;
     _loadProducts();
     _startNotificationPolling();
   }
@@ -271,7 +273,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _openCart() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CartScreen(cartItems: _cart)),
+      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.instance.items)),
     );
   }
 
@@ -289,16 +291,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
         backgroundColor: const Color(0xFFC8102E),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: Badge(
-              label: Text(_cart.length.toString()),
-              isLabelVisible: _cart.isNotEmpty,
-              backgroundColor: const Color(0xFFFFD700),
-              textColor: Colors.black,
-              child: const Icon(Icons.shopping_cart, color: Colors.white),
+          AnimatedBuilder(
+            animation: CartService.instance,
+            builder: (context, _) => IconButton(
+              icon: Badge(
+                label: Text(CartService.instance.count.toString()),
+                isLabelVisible: !CartService.instance.isEmpty,
+                backgroundColor: const Color(0xFFFFD700),
+                textColor: Colors.black,
+                child: const Icon(Icons.shopping_cart, color: Colors.white),
+              ),
+              onPressed: _openCart,
             ),
-            onPressed: _openCart,
-          )
+          ),
         ],
       ),
       body: Column(
@@ -453,6 +458,8 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   bool _isLoading = false;
+  bool _selectMode = false;
+  final Set<int> _selectedIds = {};
 
   // Map<productId, {product, qty}>
   late final Map<int, Map<String, dynamic>> _itemMap;
@@ -488,40 +495,145 @@ class _CartScreenState extends State<CartScreen> {
     return '${f}đ';
   }
 
-  void _increase(int id) => setState(() => _itemMap[id]!['qty']++);
+  // Đồng bộ lại giỏ hàng chung của app (Trang chủ, danh sách sản phẩm) mỗi khi
+  // giỏ hàng ở màn hình này thay đổi (tăng/giảm số lượng, xoá sản phẩm...).
+  void _syncCart() {
+    final flat = <dynamic>[];
+    for (final entry in _itemMap.values) {
+      for (int i = 0; i < (entry['qty'] as int); i++) {
+        flat.add(entry['product']);
+      }
+    }
+    CartService.instance.replaceAll(flat);
+  }
+
+  void _increase(int id) => setState(() {
+        _itemMap[id]!['qty']++;
+        _syncCart();
+      });
 
   void _decrease(int id) async {
     final qty = _itemMap[id]!['qty'] as int;
     if (qty <= 1) {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Xoá sản phẩm?',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Text(
-              'Bạn có chắc muốn xoá "${_itemMap[id]!['product']['name']}" khỏi giỏ hàng không?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Huỷ', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC8102E),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8))),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Xoá'),
-            ),
-          ],
-        ),
-      );
-      if (confirm == true) setState(() => _itemMap.remove(id));
+      final confirm = await _confirmRemove(_itemMap[id]!['product']['name']);
+      if (confirm == true) {
+        setState(() {
+          _itemMap.remove(id);
+          _selectedIds.remove(id);
+          _syncCart();
+        });
+      }
     } else {
-      setState(() => _itemMap[id]!['qty'] = qty - 1);
+      setState(() {
+        _itemMap[id]!['qty'] = qty - 1;
+        _syncCart();
+      });
+    }
+  }
+
+  void _removeItem(int id) async {
+    final confirm = await _confirmRemove(_itemMap[id]!['product']['name']);
+    if (confirm == true) {
+      setState(() {
+        _itemMap.remove(id);
+        _selectedIds.remove(id);
+        _syncCart();
+      });
+    }
+  }
+
+  Future<bool?> _confirmRemove(String name) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Xoá sản phẩm?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Bạn có chắc muốn xoá "$name" khỏi giỏ hàng không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC8102E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteSelected() async {
+    if (_selectedIds.isEmpty) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Xoá sản phẩm đã chọn?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Bạn có chắc muốn xoá ${_selectedIds.length} sản phẩm đã chọn khỏi giỏ hàng không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC8102E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      setState(() {
+        for (final id in _selectedIds) {
+          _itemMap.remove(id);
+        }
+        _selectedIds.clear();
+        _selectMode = false;
+        _syncCart();
+      });
+    }
+  }
+
+  void _clearAll() async {
+    if (_itemMap.isEmpty) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Xoá tất cả?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Bạn có chắc muốn xoá toàn bộ giỏ hàng không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC8102E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xoá hết'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      setState(() {
+        _itemMap.clear();
+        _selectedIds.clear();
+        _selectMode = false;
+        _syncCart();
+      });
     }
   }
 
@@ -622,6 +734,7 @@ class _CartScreenState extends State<CartScreen> {
         if (response.statusCode == 200) {
           final order = jsonDecode(response.body);
           if (order['status'] == 'PAID') {
+            CartService.instance.clear();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Thanh toán thành công!'),
@@ -644,11 +757,42 @@ class _CartScreenState extends State<CartScreen> {
       backgroundColor: const Color(0xFFFAF8F5),
       appBar: AppBar(
         title: Text(
-          _itemMap.isEmpty ? 'Giỏ hàng' : 'Giỏ hàng ($_totalItems sản phẩm)',
+          _selectMode
+              ? 'Đã chọn ${_selectedIds.length}'
+              : (_itemMap.isEmpty ? 'Giỏ hàng' : 'Giỏ hàng ($_totalItems sản phẩm)'),
           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFFC8102E),
         foregroundColor: Colors.white,
+        leading: _selectMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() {
+                  _selectMode = false;
+                  _selectedIds.clear();
+                }),
+              )
+            : null,
+        actions: [
+          if (_itemMap.isNotEmpty && _selectMode)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Xoá sản phẩm đã chọn',
+              onPressed: _selectedIds.isEmpty ? null : _deleteSelected,
+            ),
+          if (_itemMap.isNotEmpty && !_selectMode)
+            IconButton(
+              icon: const Icon(Icons.checklist),
+              tooltip: 'Chọn nhiều sản phẩm',
+              onPressed: () => setState(() => _selectMode = true),
+            ),
+          if (_itemMap.isNotEmpty && !_selectMode)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: 'Xoá tất cả',
+              onPressed: _clearAll,
+            ),
+        ],
       ),
       body: _itemMap.isEmpty
           ? const Center(
@@ -689,6 +833,18 @@ class _CartScreenState extends State<CartScreen> {
                         ],
                       ),
                       child: Row(children: [
+                        if (_selectMode)
+                          Checkbox(
+                            value: _selectedIds.contains(id),
+                            activeColor: const Color(0xFFC8102E),
+                            onChanged: (checked) => setState(() {
+                              if (checked == true) {
+                                _selectedIds.add(id);
+                              } else {
+                                _selectedIds.remove(id);
+                              }
+                            }),
+                          ),
                         // Ảnh
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
@@ -726,6 +882,12 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        if (!_selectMode)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            tooltip: 'Xoá sản phẩm',
+                            onPressed: () => _removeItem(id),
+                          ),
                         // Nút − số lượng +
                         Column(
                           children: [

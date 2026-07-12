@@ -2,13 +2,17 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../models/category.dart';
 import '../services/auth_service.dart';
+import '../services/cart_service.dart';
+import '../services/category_service.dart';
 import '../services/notification_service.dart';
 import '../services/token_storage.dart';
 import '../services/cart_service.dart';
 import '../utils/api_constants.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
+import 'product_detail_screen.dart';
 import 'account_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'product_detail_screen.dart';
@@ -27,14 +31,26 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _loadingProducts = true;
   int _unreadCount = 0;
   int _bottomNavIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _categories = [
-    {'icon': Icons.watch_outlined,              'label': 'Đồng hồ',    'color': Color(0xFFE91E8C)},
-    {'icon': Icons.diamond_outlined,            'label': 'Nhẫn',       'color': Color(0xFF9C27B0)},
-    {'icon': Icons.stars_outlined,              'label': 'Dây chuyền', 'color': Color(0xFFFF9800)},
-    {'icon': Icons.auto_awesome,                'label': 'Bông tai',   'color': Color(0xFF2196F3)},
-    {'icon': Icons.workspace_premium_outlined,  'label': 'Cao cấp',    'color': Color(0xFF4CAF50)},
-    {'icon': Icons.card_giftcard,               'label': 'Quà tặng',   'color': Color(0xFFFF5722)},
+  List<Category> _categories = [];
+
+  static const List<IconData> _categoryIcons = [
+    Icons.watch_outlined,
+    Icons.diamond_outlined,
+    Icons.stars_outlined,
+    Icons.auto_awesome,
+    Icons.workspace_premium_outlined,
+    Icons.card_giftcard,
+  ];
+
+  static const List<Color> _categoryColors = [
+    Color(0xFFE91E8C),
+    Color(0xFF9C27B0),
+    Color(0xFFFF9800),
+    Color(0xFF2196F3),
+    Color(0xFF4CAF50),
+    Color(0xFFFF5722),
   ];
 
   @override
@@ -43,6 +59,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     _loadUserInfo();
     _loadProducts();
     _loadUnreadCount();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await CategoryService.listCategories();
+      if (mounted) setState(() => _categories = categories);
+    } catch (_) {
+      // Giữ danh sách trống, không chặn các phần khác của trang chủ
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -54,6 +86,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     await Navigator.push(
         context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     _loadUnreadCount();
+  }
+
+  void _openSearch([String? query]) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductListScreen(initialSearch: query ?? _searchController.text.trim()),
+      ),
+    );
+  }
+
+  void _openCategory(int categoryId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => ProductListScreen(initialCategoryId: categoryId.toString())),
+    );
+  }
+
+  void _openCart() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CartScreen(cartItems: CartService.instance.items)),
+    );
+  }
+
+  void _openProductDetail(dynamic product) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+    ).then((_) => _loadProducts());
   }
 
   Future<void> _loadUserInfo() async {
@@ -186,13 +249,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           height: 40,
                           decoration: BoxDecoration(
                               color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                          child: const Row(children: [
-                            SizedBox(width: 12),
-                            Icon(Icons.search, color: Colors.grey, size: 20),
-                            SizedBox(width: 8),
-                            Text('Tìm kiếm sản phẩm...',
-                                style: TextStyle(color: Colors.grey, fontSize: 14)),
-                          ]),
+                          child: TextField(
+                            controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            decoration: const InputDecoration(
+                              hintText: 'Tìm kiếm sản phẩm...',
+                              hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                              prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            onSubmitted: (value) => _openSearch(value),
+                          ),
                         ),
                       ],
                     ),
@@ -319,13 +388,53 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(children: [
-                    _infoCard(Icons.local_shipping_outlined, 'Miễn phí\nvận chuyển', const Color(0xFF2196F3)),
+                    _infoCard(
+                      Icons.local_shipping_outlined,
+                      'Miễn phí\nvận chuyển',
+                      const Color(0xFF2196F3),
+                      () => _showPolicyDetail(
+                        'Miễn phí vận chuyển',
+                        'Aura Accessories miễn phí vận chuyển cho tất cả đơn hàng từ 250.000đ trở lên trên toàn quốc. Đơn hàng dưới 250.000đ áp dụng phí ship đồng giá 25.000đ.',
+                        Icons.local_shipping_outlined,
+                        const Color(0xFF2196F3),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    _infoCard(Icons.verified_outlined,       'Chính hãng\n100%',       const Color(0xFF4CAF50)),
+                    _infoCard(
+                      Icons.verified_outlined,
+                      'Chính hãng\n100%',
+                      const Color(0xFF4CAF50),
+                      () => _showPolicyDetail(
+                        'Cam kết chính hãng 100%',
+                        'Tất cả các sản phẩm phụ kiện thời trang tại Aura Accessories đều được thiết kế độc quyền, bảo chứng chất lượng chính hãng 100% và đổi trả nhanh chóng nếu phát hiện lỗi từ khâu sản xuất.',
+                        Icons.verified_outlined,
+                        const Color(0xFF4CAF50),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    _infoCard(Icons.replay_outlined,         'Đổi trả\n30 ngày',       const Color(0xFFFF9800)),
+                    _infoCard(
+                      Icons.replay_outlined,
+                      'Đổi trả\n30 ngày',
+                      const Color(0xFFFF9800),
+                      () => _showPolicyDetail(
+                        'Đổi trả 30 ngày',
+                        'Chúng tôi hỗ trợ đổi sản phẩm mới hoặc hoàn trả tiền trong vòng 30 ngày kể từ ngày nhận hàng nếu phát hiện lỗi kỹ thuật, lỗi đóng gói hoặc sản phẩm không vừa kích cỡ mong muốn.',
+                        Icons.replay_outlined,
+                        const Color(0xFFFF9800),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    _infoCard(Icons.support_agent_outlined,  'Hỗ trợ\n24/7',           const Color(0xFFC8102E)),
+                    _infoCard(
+                      Icons.support_agent_outlined,
+                      'Hỗ trợ\n24/7',
+                      const Color(0xFFC8102E),
+                      () => _showPolicyDetail(
+                        'Hỗ trợ khách hàng 24/7',
+                        'Đội ngũ chăm sóc khách hàng Aura Accessories luôn túc trực hỗ trợ bạn. Vui lòng liên hệ hotline 1900 8888 hoặc gửi phản hồi trực tiếp qua hòm thư hỗ trợ trong ứng dụng.',
+                        Icons.support_agent_outlined,
+                        const Color(0xFFC8102E),
+                      ),
+                    ),
                   ]),
                 ),
 
@@ -522,9 +631,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
-        currentIndex: _bottomNavIndex > 2 ? _bottomNavIndex : _bottomNavIndex, // handle logic if needed
+        currentIndex: _bottomNavIndex,
         onTap: (index) {
           if (index == 2) return; // Middle button is FAB
+          if (index == 0) {
+            setState(() => _bottomNavIndex = 0);
+            return;
+          }
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductListScreen()));
             return;
@@ -545,7 +658,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
             return;
           }
-          setState(() => _bottomNavIndex = index);
         },
         items: const [
           BottomNavigationBarItem(
@@ -574,25 +686,107 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   // ── Helper widgets ─────────────────────────────────────────────────────
 
-  Widget _infoCard(IconData icon, String text, Color color) {
+  void _showPolicyDetail(String title, String description, IconData icon, Color color) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: color, size: 26),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.5,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFC8102E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Đã hiểu',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoCard(IconData icon, String text, Color color, VoidCallback onTap) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)
+            ],
+          ),
+          child: Column(children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 4),
+            Text(text,
+                style:
+                    const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center),
+          ]),
         ),
-        child: Column(children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 4),
-          Text(text,
-              style:
-                  const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center),
-        ]),
       ),
     );
   }
@@ -603,7 +797,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final price    = _formatPrice(product['price']);
     final name     = product['name'] as String? ?? '';
 
-    return Container(
+    return GestureDetector(
+      onTap: () => _openProductDetail(product),
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -662,6 +858,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

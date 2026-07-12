@@ -13,9 +13,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, full_name, phone } = req.body;
+
+    if (!email || !EMAIL_REGEX.test(email)) {
+      res.status(400).json({ error: 'Email không hợp lệ.' });
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      res.status(400).json({ error: 'Mật khẩu phải có ít nhất 8 ký tự.' });
+      return;
+    }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
