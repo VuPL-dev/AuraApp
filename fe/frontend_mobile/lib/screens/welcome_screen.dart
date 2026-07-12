@@ -372,13 +372,53 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(children: [
-                    _infoCard(Icons.local_shipping_outlined, 'Miễn phí\nvận chuyển', const Color(0xFF2196F3)),
+                    _infoCard(
+                      Icons.local_shipping_outlined,
+                      'Miễn phí\nvận chuyển',
+                      const Color(0xFF2196F3),
+                      () => _showPolicyDetail(
+                        'Miễn phí vận chuyển',
+                        'Aura Accessories miễn phí vận chuyển cho tất cả đơn hàng từ 250.000đ trở lên trên toàn quốc. Đơn hàng dưới 250.000đ áp dụng phí ship đồng giá 25.000đ.',
+                        Icons.local_shipping_outlined,
+                        const Color(0xFF2196F3),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    _infoCard(Icons.verified_outlined,       'Chính hãng\n100%',       const Color(0xFF4CAF50)),
+                    _infoCard(
+                      Icons.verified_outlined,
+                      'Chính hãng\n100%',
+                      const Color(0xFF4CAF50),
+                      () => _showPolicyDetail(
+                        'Cam kết chính hãng 100%',
+                        'Tất cả các sản phẩm phụ kiện thời trang tại Aura Accessories đều được thiết kế độc quyền, bảo chứng chất lượng chính hãng 100% và đổi trả nhanh chóng nếu phát hiện lỗi từ khâu sản xuất.',
+                        Icons.verified_outlined,
+                        const Color(0xFF4CAF50),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    _infoCard(Icons.replay_outlined,         'Đổi trả\n30 ngày',       const Color(0xFFFF9800)),
+                    _infoCard(
+                      Icons.replay_outlined,
+                      'Đổi trả\n30 ngày',
+                      const Color(0xFFFF9800),
+                      () => _showPolicyDetail(
+                        'Đổi trả 30 ngày',
+                        'Chúng tôi hỗ trợ đổi sản phẩm mới hoặc hoàn trả tiền trong vòng 30 ngày kể từ ngày nhận hàng nếu phát hiện lỗi kỹ thuật, lỗi đóng gói hoặc sản phẩm không vừa kích cỡ mong muốn.',
+                        Icons.replay_outlined,
+                        const Color(0xFFFF9800),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    _infoCard(Icons.support_agent_outlined,  'Hỗ trợ\n24/7',           const Color(0xFFC8102E)),
+                    _infoCard(
+                      Icons.support_agent_outlined,
+                      'Hỗ trợ\n24/7',
+                      const Color(0xFFC8102E),
+                      () => _showPolicyDetail(
+                        'Hỗ trợ khách hàng 24/7',
+                        'Đội ngũ chăm sóc khách hàng Aura Accessories luôn túc trực hỗ trợ bạn. Vui lòng liên hệ hotline 1900 8888 hoặc gửi phản hồi trực tiếp qua hòm thư hỗ trợ trong ứng dụng.',
+                        Icons.support_agent_outlined,
+                        const Color(0xFFC8102E),
+                      ),
+                    ),
                   ]),
                 ),
 
@@ -620,25 +660,107 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   // ── Helper widgets ─────────────────────────────────────────────────────
 
-  Widget _infoCard(IconData icon, String text, Color color) {
+  void _showPolicyDetail(String title, String description, IconData icon, Color color) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: color, size: 26),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.5,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFC8102E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Đã hiểu',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoCard(IconData icon, String text, Color color, VoidCallback onTap) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)
+            ],
+          ),
+          child: Column(children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 4),
+            Text(text,
+                style:
+                    const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center),
+          ]),
         ),
-        child: Column(children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 4),
-          Text(text,
-              style:
-                  const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center),
-        ]),
       ),
     );
   }
