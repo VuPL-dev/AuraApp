@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
 import '../services/cart_service.dart';
+import '../utils/custom_snackbar.dart';
+import 'cart_screen.dart';
 
 const _kPrimary = Color(0xFFC8102E);
 
@@ -187,12 +189,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         child: ElevatedButton(
           onPressed: () {
             CartService.addToCart(product);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${product['name']} đã thêm vào giỏ!'),
-                backgroundColor: _kPrimary,
-                duration: const Duration(seconds: 2),
-              ),
+            CustomSnackBar.showSuccessDialog(
+              context: context,
+              productName: product['name'] ?? '',
+              onGoToCart: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CartScreen(
+                      cartItems: CartService.cartNotifier.value.map((c) => <String, dynamic>{
+                        'id': c.productId,
+                        'name': c.name,
+                        'price': c.price,
+                        'images': c.imageUrl != null ? [{'image_url': c.imageUrl}] : []
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
             );
           },
           style: ElevatedButton.styleFrom(
