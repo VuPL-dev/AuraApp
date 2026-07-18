@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,11 +11,15 @@ import 'services/token_storage.dart';
 import 'services/notification_service.dart';
 import 'services/cart_service.dart';
 import 'utils/api_constants.dart';
-import 'services/cart_service.dart';
-import 'screens/welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Load biến môi trường từ file .env (Gemini API key cho chatbot)
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // Nếu thiếu .env, app vẫn chạy nhưng chatbot sẽ báo lỗi hướng dẫn
+  }
   await CartService.loadCart();
   runApp(const MyApp());
 }

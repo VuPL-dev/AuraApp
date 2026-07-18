@@ -8,14 +8,13 @@ import '../services/cart_service.dart';
 import '../services/category_service.dart';
 import '../services/notification_service.dart';
 import '../services/token_storage.dart';
-import '../services/cart_service.dart';
 import '../utils/api_constants.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 import 'product_detail_screen.dart';
 import 'account_screen.dart';
 import 'qr_scanner_screen.dart';
-import 'product_detail_screen.dart';
+import 'chat_screen.dart';
 import '../main.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -199,6 +198,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             ]),
                             // Action icons
                             Row(children: [
+                              IconButton(
+                                tooltip: 'Chat với AURA Assistant',
+                                icon: const Icon(Icons.smart_toy_outlined,
+                                    color: Colors.white),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ChatScreen(),
+                                  ),
+                                ),
+                              ),
                               IconButton(
                                 icon: Badge(
                                   label: Text('$_unreadCount'),
@@ -633,7 +643,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         unselectedFontSize: 11,
         currentIndex: _bottomNavIndex,
         onTap: (index) {
-          if (index == 2) return; // Middle button is FAB
+          if (index == 2) {
+            // Chatbot AI - mở ChatScreen
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ChatScreen()),
+            );
+            return;
+          }
           if (index == 0) {
             setState(() => _bottomNavIndex = 0);
             return;
@@ -669,8 +686,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               activeIcon: Icon(Icons.category),
               label: 'Danh mục'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.qr_code_scanner, color: Colors.transparent),
-              label: ''), // Placeholder for FAB
+              icon: Icon(Icons.smart_toy_outlined, color: Color(0xFFC8102E)),
+              activeIcon: Icon(Icons.smart_toy, color: Color(0xFFC8102E)),
+              label: 'AURA AI'),
           BottomNavigationBarItem(
               icon: Icon(Icons.shopping_cart_outlined),
               activeIcon: Icon(Icons.shopping_cart),

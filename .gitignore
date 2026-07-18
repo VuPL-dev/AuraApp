@@ -1,0 +1,44 @@
+# ===== AURA Accessories — Root .gitignore =====
+
+# Editor / IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+.DS_Store?
+
+# Build outputs
+**/build/
+**/dist/
+**/node_modules/
+
+# Env / secrets (override in sub-folders if needed)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Prisma local DB (already in .gitignore of be/backend, kept here for safety)
+be/backend/prisma/dev.db
+be/backend/prisma/dev.db-journal
+
+# Python (for test_e2e.py)
+/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# NOTE: .github/ MUST be tracked (contains issue templates + local issues)
+# Do NOT add .github/ here
