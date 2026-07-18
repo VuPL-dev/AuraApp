@@ -8,12 +8,12 @@ Tổng hợp tất cả issue được track trong repo này. Cập nhật lần
 
 | # | Tiêu đề | Type | Priority | Area | Labels |
 |---|---|---|---|---|---|
-| [#001](./issues/001-bug-rate-limit-gemini.md) | Rate limit Gemini API gây lỗi khi gửi nhiều câu liên tiếp | 🐛 bug | 🔴 high | chatbot | `bug`, `area:chatbot`, `priority:high` |
-| [#002](./issues/002-bug-gia-hien-thi-dau-phay.md) | AI trả lời giá với dấu phẩy thay vì dấu chấm | 🐛 bug | 🟢 low | chatbot, ui | `bug`, `area:chatbot`, `ui`, `priority:low` |
-| [#003](./issues/003-feature-sync-products-from-db.md) | Sync sản phẩm realtime từ Prisma DB | ✨ feature | 🔴 high | chatbot, backend | `enhancement`, `area:chatbot`, `area:backend`, `priority:high` |
-| [#004](./issues/004-feature-product-card-in-chat.md) | Đính kèm ảnh sản phẩm vào câu trả lời chatbot | ✨ feature | 🟡 medium | chatbot, ui | `enhancement`, `area:chatbot`, `ui`, `priority:medium` |
-| [#005](./issues/005-chore-migrate-withOpacity.md) | Migrate từ `withOpacity()` deprecated sang `withValues()` | 🧹 chore | 🟢 low | tech-debt | `chore`, `tech-debt`, `priority:low` |
-| [#006](./issues/006-chore-setup-ci-cd.md) | Setup CI/CD pipeline (GitHub Actions) | 🧹 chore | 🟡 medium | ci-cd | `chore`, `ci-cd`, `priority:medium` |
+| [#001](./issues/001-bug-rate-limit-gemini.md) | Rate limit Gemini API gây lỗi khi gửi nhiều câu liên tiếp | 🐛 bug | 🔴 P0 (High) | chatbot | `bug`, `area:chatbot`, `priority:high` |
+| [#002](./issues/002-bug-gia-hien-thi-dau-phay.md) | AI trả lời giá với dấu phẩy thay vì dấu chấm | 🐛 bug | 🟢 P2 (Low) | chatbot, ui | `bug`, `area:chatbot`, `ui`, `priority:low` |
+| [#003](./issues/003-feature-sync-products-from-db.md) | Sync sản phẩm realtime từ Prisma DB | ✨ feature | 🔴 P0 (High) | chatbot, backend | `enhancement`, `area:chatbot`, `area:backend`, `priority:high` |
+| [#004](./issues/004-feature-product-card-in-chat.md) | Đính kèm ảnh sản phẩm vào câu trả lời chatbot | ✨ feature | 🟡 P1 (Medium) | chatbot, ui | `enhancement`, `area:chatbot`, `ui`, `priority:medium` |
+| [#005](./issues/005-chore-migrate-withOpacity.md) | Migrate từ `withOpacity()` deprecated sang `withValues()` | 🧹 chore | 🟢 P2 (Low) | tech-debt | `chore`, `tech-debt`, `priority:low` |
+| [#006](./issues/006-chore-setup-ci-cd.md) | Setup CI/CD pipeline (GitHub Actions) | 🧹 chore | 🟡 P1 (Medium) | ci-cd | `chore`, `ci-cd`, `priority:medium` |
 
 ---
 
@@ -31,9 +31,9 @@ _Chưa có_
   - ✨ Feature: 2 (33%)
   - 🧹 Chore: 2 (33%)
 - **Theo priority:**
-  - 🔴 High: 2 (33%)
-  - 🟡 Medium: 2 (33%)
-  - 🟢 Low: 2 (33%)
+  - 🔴 P0 (High): 2 (33%) — #001, #003
+  - 🟡 P1 (Medium): 2 (33%) — #004, #006
+  - 🟢 P2 (Low): 2 (33%) — #002, #005
 - **Theo area:**
   - 🤖 Chatbot: 4 (67%)
   - 🎨 UI: 2 (33%)
@@ -42,7 +42,7 @@ _Chưa có_
 
 ---
 
-## 🎯 Sprint 1 (đề xuất)
+## 🎯 Sprint 1 (đề xuất thứ tự)
 
 Tuần này ưu tiên làm theo thứ tự:
 

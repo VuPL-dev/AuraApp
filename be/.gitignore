@@ -7,3 +7,9 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+
+# SQLite Databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

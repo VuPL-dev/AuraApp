@@ -15,6 +15,7 @@ import 'product_detail_screen.dart';
 import 'account_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'chat_screen.dart';
+import 'cart_screen.dart';
 import '../main.dart';
 
 class WelcomeScreen extends StatefulWidget {
