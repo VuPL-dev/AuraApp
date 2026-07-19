@@ -14,6 +14,7 @@ class MapSelectionScreen extends StatefulWidget {
 
 class _MapSelectionScreenState extends State<MapSelectionScreen> {
   final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
   LatLng? _currentLocation;
   LatLng? _selectedLocation;
   String _selectedAddress = "Đang tải vị trí...";
@@ -51,15 +52,29 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
     }
 
     try {
-      Position position = await Geolocator.getCurrentPosition();
+      Position? position = await Geolocator.getLastKnownPosition();
+      
+      if (position == null) {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 5),
+        );
+      }
+      
       setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
+        _currentLocation = LatLng(position!.latitude, position.longitude);
         _selectedLocation = _currentLocation;
         _isLoading = false;
       });
       _getAddressFromLatLng(_currentLocation!);
     } catch (e) {
-      _showError('Không thể lấy vị trí hiện tại: $e');
+      // Fallback to a default location (e.g. Hanoi) if GPS times out
+      setState(() {
+        _currentLocation = const LatLng(21.028511, 105.804817);
+        _selectedLocation = _currentLocation;
+        _isLoading = false;
+      });
+      _getAddressFromLatLng(_currentLocation!);
     }
   }
 
@@ -93,6 +108,59 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
       if (mounted) {
         setState(() {
           _selectedAddress = 'Lỗi kết nối';
+        });
+      }
+    }
+  }
+
+  Future<void> _searchAddress(String query) async {
+    if (query.trim().isEmpty) return;
+    
+    // Hide keyboard
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
+    try {
+      final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1');
+      final response = await http.get(url, headers: {
+        'User-Agent': 'AuraApp/1.0 (dev@auraapp.local)',
+      });
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        if (data.isNotEmpty) {
+          final result = data[0];
+          final lat = double.parse(result['lat'].toString());
+          final lon = double.parse(result['lon'].toString());
+          final newLocation = LatLng(lat, lon);
+          
+          _mapController.move(newLocation, 15.0);
+          
+          if (mounted) {
+            setState(() {
+              _currentLocation = newLocation;
+              _selectedLocation = newLocation;
+            });
+          }
+          await _getAddressFromLatLng(newLocation);
+        } else {
+          _showError('Không tìm thấy địa điểm nào');
+        }
+      } else {
+        _showError('Lỗi tìm kiếm (${response.statusCode})');
+      }
+    } catch (e) {
+      _showError('Lỗi kết nối khi tìm kiếm');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
         });
       }
     }
@@ -147,6 +215,39 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                 ),
               ],
             ),
+            
+          // Search bar
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5, offset: Offset(0, 2))],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        hintText: 'Nhập địa điểm, đường, phường, quận...',
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: _searchAddress,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.search, color: Color(0xFFC8102E)),
+                    onPressed: () => _searchAddress(_searchController.text),
+                  ),
+                ],
+              ),
+            ),
+          ),
             
           // Fixed center pin overlay
           if (_currentLocation != null)
