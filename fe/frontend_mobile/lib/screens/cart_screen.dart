@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/token_storage.dart';
 import '../services/cart_service.dart';
 import '../utils/api_constants.dart';
+import 'map_selection_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final List<dynamic> cartItems;
@@ -20,6 +21,10 @@ class _CartScreenState extends State<CartScreen> {
   final Set<int> _selectedIds = {}; // Stores CartItem.id
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  String? _shippingAddress;
+  double? _shippingLat;
+  double? _shippingLng;
 
   @override
   void dispose() {
@@ -180,6 +185,15 @@ class _CartScreenState extends State<CartScreen> {
     if (items.isEmpty) return;
     setState(() => _isLoading = true);
     try {
+      if (_shippingAddress == null || _shippingLat == null || _shippingLng == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Vui lòng chọn địa chỉ giao hàng')));
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final orderItems = items.map((e) {
         return {
           'product_id': e.productId,
@@ -194,6 +208,7 @@ class _CartScreenState extends State<CartScreen> {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text('Vui lòng đăng nhập để thanh toán')));
         }
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -205,6 +220,9 @@ class _CartScreenState extends State<CartScreen> {
         },
         body: jsonEncode({
           "address_id": null,
+          "shipping_address": _shippingAddress,
+          "shipping_lat": _shippingLat,
+          "shipping_lng": _shippingLng,
           "total_amount": CartService.totalAmount,
           "payment_method": "PAYOS",
           "items": orderItems,
@@ -512,6 +530,48 @@ class _CartScreenState extends State<CartScreen> {
                                 );
                               },
                             ),
+                    ),
+
+                    // Address Selection Bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      color: Colors.white,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Color(0xFFC8102E)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Địa chỉ giao hàng', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  _shippingAddress ?? 'Chưa chọn địa chỉ',
+                                  style: TextStyle(color: _shippingAddress == null ? Colors.red : Colors.black87, fontSize: 13),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const MapSelectionScreen()),
+                              );
+                              if (result != null && result is Map) {
+                                setState(() {
+                                  _shippingAddress = result['address'];
+                                  _shippingLat = result['lat'];
+                                  _shippingLng = result['lng'];
+                                });
+                              }
+                            },
+                            child: Text(_shippingAddress == null ? 'Chọn' : 'Thay đổi', style: const TextStyle(color: Color(0xFFC8102E))),
+                          )
+                        ],
+                      ),
                     ),
 
                     // Checkout bar

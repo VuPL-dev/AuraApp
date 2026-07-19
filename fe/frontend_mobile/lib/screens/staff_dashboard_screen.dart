@@ -15,6 +15,7 @@ import 'login_screen.dart';
 import 'product_list_view.dart';
 import 'product_form_view.dart';
 import 'staff_comments_screen.dart';
+import 'staff_map_screen.dart';
 
 class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -590,6 +591,20 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                                         style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), minimumSize: Size.zero),
                                       ),
                                     if (canGenerateQr) const SizedBox(width: 8),
+                                    if (status != 'DELIVERED' && status != 'CANCELLED' && order['shipping_lat'] != null)
+                                      OutlinedButton.icon(
+                                        icon: const Icon(Icons.map, size: 16, color: Colors.blue),
+                                        label: const Text('Xem bản đồ', style: TextStyle(color: Colors.blue)),
+                                        onPressed: () {
+                                          Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMapScreen(order: order)));
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
+                                          minimumSize: Size.zero,
+                                          side: const BorderSide(color: Colors.blue),
+                                        ),
+                                      ),
+                                    if (status != 'DELIVERED' && status != 'CANCELLED' && order['shipping_lat'] != null) const SizedBox(width: 8),
                                     if (status != 'DELIVERED' && status != 'CANCELLED')
                                       ElevatedButton.icon(
                                         icon: const Icon(Icons.check, size: 16),

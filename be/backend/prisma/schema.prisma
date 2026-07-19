@@ -115,6 +115,9 @@ model Order {
   status         String       @default("PENDING")
   total_amount   Decimal      
   payment_method String?
+  shipping_address String?
+  shipping_lat     Decimal?
+  shipping_lng     Decimal?
   created_at     DateTime     @default(now())
   items          OrderItem[]
   payments       Payment[]
