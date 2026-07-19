@@ -57,7 +57,6 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
         _selectedLocation = _currentLocation;
         _isLoading = false;
       });
-      _mapController.move(_currentLocation!, 15.0);
       _getAddressFromLatLng(_currentLocation!);
     } catch (e) {
       _showError('Không thể lấy vị trí hiện tại: $e');
@@ -72,11 +71,12 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
       final url = Uri.parse(
           'https://nominatim.openstreetmap.org/reverse?lat=${position.latitude}&lon=${position.longitude}&format=json&addressdetails=1');
       final response = await http.get(url, headers: {
-        'User-Agent': 'AuraApp/1.0',
+        'User-Agent': 'AuraApp/1.0 (dev@auraapp.local)',
+        'Accept-Language': 'vi-VN,vi;q=0.9',
       });
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(utf8.decode(response.bodyBytes));
         if (mounted) {
           setState(() {
             _selectedAddress = data['display_name'] ?? 'Không rõ địa chỉ';
@@ -85,7 +85,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
       } else {
         if (mounted) {
           setState(() {
-            _selectedAddress = 'Lỗi khi tìm địa chỉ';
+            _selectedAddress = 'Lỗi tìm địa chỉ (${response.statusCode})';
           });
         }
       }
