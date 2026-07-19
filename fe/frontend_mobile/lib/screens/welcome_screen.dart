@@ -198,42 +198,39 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                       letterSpacing: 4)),
                             ]),
                             // Action icons
-                            Row(children: [
-                              IconButton(
-                                tooltip: 'Chat với AURA Assistant',
-                                icon: const Icon(Icons.smart_toy_outlined,
-                                    color: Colors.white),
-                                onPressed: () => Navigator.push(
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              InkWell(
+                                onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => const ChatScreen(),
                                   ),
                                 ),
-                              ),
-                              IconButton(
-                                icon: Badge(
-                                  label: Text('$_unreadCount'),
-                                  isLabelVisible: _unreadCount > 0,
-                                  backgroundColor: const Color(0xFFFFD700),
-                                  textColor: Colors.black,
-                                  child: const Icon(Icons.notifications_outlined, color: Colors.white),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(6),
+                                  child: Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22),
                                 ),
-                                onPressed: _openNotifications,
                               ),
+                              const SizedBox(width: 2),
+                              InkWell(
+                                onTap: _openNotifications,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6),
+                                  child: Badge(
+                                    label: Text('$_unreadCount', style: const TextStyle(fontSize: 10)),
+                                    isLabelVisible: _unreadCount > 0,
+                                    backgroundColor: const Color(0xFFFFD700),
+                                    textColor: Colors.black,
+                                    child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 2),
                               ValueListenableBuilder<List<CartItem>>(
                                 valueListenable: CartService.cartNotifier,
                                 builder: (context, cart, child) {
-                                  return IconButton(
-                                    icon: Badge(
-                                      label: Text('${cart.length}'),
-                                      isLabelVisible: cart.isNotEmpty,
-                                      backgroundColor: Colors.white,
-                                      textColor: const Color(0xFFC8102E),
-                                      child: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                                    ),
-                                    onPressed: () {
-                                      // Navigate to CartScreen in main.dart (uses _cart from parent state)
-                                      // We open via the global cart stored in CartService
+                                  return InkWell(
+                                    onTap: () {
                                       final cartItems = CartService.cartNotifier.value
                                           .map((c) => <String, dynamic>{
                                             'id': c.productId,
@@ -243,13 +240,26 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                           }).toList();
                                       Navigator.push(context, MaterialPageRoute(builder: (_) => CartScreen(cartItems: cartItems)));
                                     },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6),
+                                      child: Badge(
+                                        label: Text('${cart.length}', style: const TextStyle(fontSize: 10)),
+                                        isLabelVisible: cart.isNotEmpty,
+                                        backgroundColor: Colors.white,
+                                        textColor: const Color(0xFFC8102E),
+                                        child: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 22),
+                                      ),
+                                    ),
                                   );
                                 }
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.logout, color: Colors.white),
-                                onPressed: _handleLogout,
-                                tooltip: 'Đăng xuất',
+                              const SizedBox(width: 2),
+                              InkWell(
+                                onTap: _handleLogout,
+                                child: const Padding(
+                                  padding: EdgeInsets.all(6),
+                                  child: Icon(Icons.logout, color: Colors.white, size: 22),
+                                ),
                               ),
                             ]),
                           ],
