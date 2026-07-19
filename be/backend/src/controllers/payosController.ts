@@ -15,6 +15,9 @@ export const createPayosPayment = async (req: any, res: Response): Promise<void>
         user_id: userId,
         address_id,
         total_amount,
+        shipping_address: req.body.shipping_address,
+        shipping_lat: req.body.shipping_lat,
+        shipping_lng: req.body.shipping_lng,
         payment_method: "BANK_TRANSFER",
         status: "PENDING",
         items: {

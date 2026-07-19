@@ -12,6 +12,9 @@ export const createOrder = async (req: any, res: Response): Promise<void> => {
         address_id,
         total_amount,
         payment_method,
+        shipping_address: req.body.shipping_address,
+        shipping_lat: req.body.shipping_lat,
+        shipping_lng: req.body.shipping_lng,
         status: 'PENDING',
         items: {
           create: items.map((item: any) => ({
