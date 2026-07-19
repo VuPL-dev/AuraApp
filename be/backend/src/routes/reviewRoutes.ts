@@ -245,5 +245,4 @@ router.patch('/replies/:replyId', authenticateToken, authorizeRole(['ADMIN', 'ST
   }
 });
 
-
 export default router;
