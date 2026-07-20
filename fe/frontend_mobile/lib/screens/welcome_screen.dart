@@ -652,22 +652,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedFontSize: 11,
         unselectedFontSize: 11,
-        currentIndex: _bottomNavIndex,
+        currentIndex: _bottomNavIndex > 4 ? 4 : _bottomNavIndex, // Prevent index out of bounds
         onTap: (index) {
-          if (index == 2) {
-            // Chatbot AI - mở ChatScreen
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ChatScreen()),
-            );
-            return;
-          }
           if (index == 0) {
             setState(() => _bottomNavIndex = 0);
             return;
           }
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductListScreen()));
+            return;
+          }
+          if (index == 2) {
+            // Dummy item for FAB, do nothing
             return;
           }
           if (index == 3) {
@@ -697,9 +693,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               activeIcon: Icon(Icons.category),
               label: 'Danh mục'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.smart_toy_outlined, color: Color(0xFFC8102E)),
-              activeIcon: Icon(Icons.smart_toy, color: Color(0xFFC8102E)),
-              label: 'AURA AI'),
+              icon: Icon(Icons.circle, color: Colors.transparent),
+              label: ''), // Vị trí trống dành cho nút QR
           BottomNavigationBarItem(
               icon: Icon(Icons.shopping_cart_outlined),
               activeIcon: Icon(Icons.shopping_cart),
