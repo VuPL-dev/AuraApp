@@ -64,8 +64,16 @@ class _StaffMapScreenState extends State<StaffMapScreen> {
         throw 'Quyền truy cập vị trí bị từ chối vĩnh viễn.';
       }
 
-      Position position = await Geolocator.getCurrentPosition();
-      _staffLocation = LatLng(position.latitude, position.longitude);
+      Position? position = await Geolocator.getLastKnownPosition();
+      
+      if (position == null) {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 5),
+        );
+      }
+      
+      _staffLocation = LatLng(position!.latitude, position.longitude);
 
       // 3. Calculate distance
       _distanceInMeters = Geolocator.distanceBetween(
